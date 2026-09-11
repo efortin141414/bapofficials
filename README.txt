@@ -1,25 +1,20 @@
-BAP TECHNICAL OFFICIALS INC. - SIMPLE ORGANIZATION WEBSITE
+BAP TECHNICAL OFFICIALS INC. — ORGANIZATION WEBSITE
 
-FILES
-- index.html
-- styles.css
-- script.js
-- assets/bapto-logo.png
+UPDATED FEATURES
+- Simple static HTML/CSS/JavaScript website
+- Embedded organization logo and National Leadership photos
+- National Officers section
+- Leadership profiles for Gil S. Reglo, Eleno M. Rivero Jr., and Engelbert Ace Fortin
+- Complete 18-region Philippine chapter directory
+- Province/area subchapter directory with search and expandable cards
+- Membership, Accreditation Seminars, Announcements, Gallery, and Contact sections
+- Mobile responsive
 
-HOW TO DEPLOY TO VERCEL
-1. Create a new GitHub repository.
-2. Upload ALL files and folders from this website package.
-3. In Vercel, click Add New > Project.
-4. Import the GitHub repository.
-5. Framework Preset: Other.
-6. Build Command: leave blank.
-7. Output Directory: leave blank.
-8. Deploy.
+VERCEL DEPLOYMENT
+Framework Preset: Other
+Root Directory: the folder containing index.html
+Build Command: blank
+Output Directory: blank
+Install Command: blank
 
-IMPORTANT BEFORE PUBLISHING
-- Replace your-email@example.com with the official organization email.
-- The inquiry form is visual/demo only. Connect it to Formspree, Supabase, or another backend to receive submissions.
-- Gallery items are placeholders. Replace them with your official photos when ready.
-- Officer and chapter content can be updated directly in index.html.
-
-UPDATE: Added a Profile of Leadership section for Gil S. Reglo with portrait, National President title, Former FIBA Referee credential, leadership biography, and leadership quote. The portrait is embedded in index.html to prevent broken images on Vercel.
+The regional geographic groupings are based on the current Philippine Standard Geographic Code (PSGC) structure. Organizational activation/status of individual BAP chapters should be updated by the organization as appointments are confirmed.
