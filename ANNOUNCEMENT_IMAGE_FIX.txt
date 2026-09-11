@@ -1,0 +1,19 @@
+BAPTO ANNOUNCEMENT IMAGE FIX
+
+What was fixed:
+1. Announcement poster thumbnails now appear in Master Page > Announcements.
+2. A preview appears immediately when you choose a poster before saving.
+3. The admin page confirms when the poster URL was uploaded.
+4. Public announcement rendering has safer image handling.
+
+Update these files in GitHub:
+- master.html
+- master.js
+- admin.css
+- public-data.js
+- styles.css
+
+You may upload the complete ZIP instead to avoid missing a file.
+
+After Vercel redeploys, hard refresh /master and the public homepage.
+If an OLD announcement says “No poster attached”, delete that announcement and upload it again with the image, because its database record has no image_url.

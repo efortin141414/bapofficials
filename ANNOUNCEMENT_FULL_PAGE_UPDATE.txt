@@ -1,0 +1,26 @@
+BAPTO ANNOUNCEMENT FULL-PAGE UPDATE
+
+What changed:
+- Every Supabase announcement card on the public homepage is now clickable.
+- Clicking a card opens /announcement?id=ANNOUNCEMENT_ID.
+- The full page shows the poster, category, date, full title, and full announcement body.
+- Added Back to Announcements and Share Announcement controls.
+- Responsive on mobile, tablet, and laptop.
+
+Files added:
+- announcement.html
+- announcement.css
+- announcement.js
+
+Files updated:
+- public-data.js
+- styles.css
+- vercel.json
+
+Deployment:
+1. Upload/replace ALL files from this package in the same GitHub repository used by Vercel.
+2. Commit the changes.
+3. Wait for Vercel deployment to show Ready.
+4. Open the homepage, scroll to Announcements, then click a published announcement.
+
+No database change is required.

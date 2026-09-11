@@ -108,7 +108,13 @@
   async function loadAnnouncements() {
     const { data, error } = await db.from('announcements').select('*').order('created_at', { ascending: false }).limit(100);
     if (error) throw error;
-    $('#announcement-list').innerHTML = (data || []).map(r => `<div class="record-row"><div class="grow"><strong>${esc(r.title)}</strong><small>${esc(r.category || 'Announcement')} • ${r.published ? 'Published' : 'Draft'}</small></div><button data-del-ann="${r.id}">Delete</button></div>`).join('') || '<p>No announcements yet.</p>';
+    $('#announcement-list').innerHTML = (data || []).map(r => {
+      const imageUrl = safeUrl(r.image_url);
+      const image = imageUrl
+        ? `<a class="announcement-thumb-link" href="${esc(imageUrl)}" target="_blank" rel="noopener" title="Open full poster"><img class="announcement-thumb" src="${esc(imageUrl)}" alt="${esc(r.title)} poster" loading="lazy" onerror="this.closest('a').classList.add('image-load-failed'); this.remove();"></a>`
+        : `<div class="announcement-no-image">No image</div>`;
+      return `<div class="record-row announcement-record">${image}<div class="grow"><strong>${esc(r.title)}</strong><small>${esc(r.category || 'Announcement')} • ${r.published ? 'Published' : 'Draft'}</small>${imageUrl ? `<small class="image-status">Poster uploaded ✓</small>` : `<small class="image-status warning">No poster attached</small>`}</div><button data-del-ann="${r.id}">Delete</button></div>`;
+    }).join('') || '<p>No announcements yet.</p>';
   }
 
   async function loadGallery() {
@@ -159,12 +165,41 @@
   function bindForms() {
     $('#admin-member-search')?.addEventListener('input', renderAdminMembers);
 
+    // Show the announcement poster immediately after choosing a file.
+    const announcementImageInput = $('#announcement-form input[name="image"]');
+    announcementImageInput?.addEventListener('change', () => {
+      const file = announcementImageInput.files?.[0];
+      const preview = $('#announcement-image-preview');
+      if (!preview) return;
+      if (!file) { preview.hidden = true; preview.removeAttribute('src'); return; }
+      const oldUrl = preview.dataset.objectUrl;
+      if (oldUrl) URL.revokeObjectURL(oldUrl);
+      const objectUrl = URL.createObjectURL(file);
+      preview.dataset.objectUrl = objectUrl;
+      preview.src = objectUrl;
+      preview.hidden = false;
+    });
+
     $('#announcement-form')?.addEventListener('submit', async e => {
       e.preventDefault(); const f = e.currentTarget; msg(f, 'Saving…');
       try {
-        const fd = new FormData(f); const image = fd.get('image')?.size ? await upload(fd.get('image'), 'announcements') : null;
+        const fd = new FormData(f);
+        const selectedFile = fd.get('image');
+        const image = selectedFile?.size ? await upload(selectedFile, 'announcements') : null;
+        if (selectedFile?.size && !image) throw new Error('The poster upload did not return a public image URL.');
         const { error } = await db.from('announcements').insert({ title: fd.get('title'), category: fd.get('category') || null, event_date: fd.get('event_date') || null, body: fd.get('body') || null, image_url: image, published: fd.get('published') === 'on', published_at: fd.get('published') === 'on' ? new Date().toISOString() : null, created_by: profile.id });
-        if (error) throw error; f.reset(); msg(f, 'Announcement saved.'); await refreshNonBlocking();
+        if (error) throw error;
+        f.reset();
+        const preview = $('#announcement-image-preview');
+        if (preview) {
+          const oldUrl = preview.dataset.objectUrl;
+          if (oldUrl) URL.revokeObjectURL(oldUrl);
+          preview.hidden = true;
+          preview.removeAttribute('src');
+          delete preview.dataset.objectUrl;
+        }
+        msg(f, image ? 'Announcement saved and poster uploaded.' : 'Announcement saved without a poster.');
+        await refreshNonBlocking();
       } catch (err) { msg(f, friendly(err), false); }
     });
 

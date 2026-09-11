@@ -20,10 +20,10 @@
     if (error) throw error;
     if (!data?.length) return;
     document.getElementById('static-announcements')?.setAttribute('hidden','');
-    target.innerHTML = data.map(a => `<article class="dynamic-card">
-      ${a.image_url ? `<img src="${esc(safeUrl(a.image_url))}" alt="${esc(a.title)} poster" loading="lazy">` : ''}
-      <div class="dynamic-card-body"><div class="dynamic-meta">${esc(a.category || 'Announcement')} • ${esc(fmtDate(a.event_date || a.published_at))}</div><h3>${esc(a.title)}</h3><p>${esc(a.body || '')}</p></div>
-    </article>`).join('');
+    target.innerHTML = data.map(a => `<a class="dynamic-card announcement-card-link" href="/announcement?id=${encodeURIComponent(a.id)}" aria-label="Open full announcement: ${esc(a.title)}">
+      ${safeUrl(a.image_url) ? `<img src="${esc(safeUrl(a.image_url))}" alt="${esc(a.title)} poster" loading="lazy" onerror="this.classList.add('image-load-error'); this.removeAttribute('src'); this.alt='Poster image could not be loaded';">` : ''}
+      <div class="dynamic-card-body"><div class="dynamic-meta">${esc(a.category || 'Announcement')} • ${esc(fmtDate(a.event_date || a.published_at))}</div><h3>${esc(a.title)}</h3><p>${esc(a.body || '')}</p><span class="announcement-read-more">Open full announcement →</span></div>
+    </a>`).join('');
   }
 
   async function loadGallery(db) {

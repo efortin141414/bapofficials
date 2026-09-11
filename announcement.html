@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#06152f">
+  <title>Announcement | BAP Technical Officials Inc.</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/announcement.css">
+</head>
+<body class="announcement-page-body">
+  <header class="announcement-topbar">
+    <a class="announcement-brand" href="/" aria-label="BAPTO home">
+      <span class="announcement-brand-mark">BAP</span>
+      <span><strong>BAP Technical Officials Inc.</strong><small>Official Announcement</small></span>
+    </a>
+    <a class="announcement-back" href="/#announcements">← Back to Announcements</a>
+  </header>
+
+  <main class="announcement-page-shell">
+    <div id="announcement-loading" class="announcement-state">Loading announcement…</div>
+    <div id="announcement-error" class="announcement-state announcement-error" hidden></div>
+
+    <article id="announcement-detail" class="announcement-detail" hidden>
+      <div class="announcement-hero" id="announcement-image-wrap" hidden>
+        <img id="announcement-image" alt="Announcement poster">
+      </div>
+      <div class="announcement-content">
+        <div class="announcement-eyebrow">
+          <span id="announcement-category">Announcement</span>
+          <span class="announcement-dot">•</span>
+          <time id="announcement-date"></time>
+        </div>
+        <h1 id="announcement-title"></h1>
+        <div id="announcement-body" class="announcement-body-copy"></div>
+        <div class="announcement-actions">
+          <a href="/#announcements" class="announcement-primary-btn">Back to Announcements</a>
+          <button type="button" id="announcement-share" class="announcement-secondary-btn">Share Announcement</button>
+        </div>
+      </div>
+    </article>
+  </main>
+
+  <footer class="announcement-footer">
+    <p>Basketball Association of the Philippines Technical Officials Inc.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase-config.js?v=20260912-1"></script>
+  <script src="/announcement.js?v=20260912-1"></script>
+</body>
+</html>
