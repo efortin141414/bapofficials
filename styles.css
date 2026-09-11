@@ -299,3 +299,18 @@ p{margin-top:0}
 /* BARMM / Cotabato chapter leadership */
 .region-local-feature{background:linear-gradient(135deg,#061a37 0%,#0a2c5d 62%,#431016 135%)}
 .region-directory-body .region-leadership-feature + .subchapter-label{margin-top:2px}
+
+
+/* ===== Dynamic Supabase content ===== */
+.dynamic-grid:empty,.dynamic-gallery:empty,.dynamic-region-posters:empty,.member-grid:empty{display:none}
+.dynamic-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25rem;margin-bottom:1.5rem}
+.dynamic-card{background:#fff;border:1px solid rgba(3,20,48,.1);border-radius:18px;overflow:hidden;box-shadow:0 14px 36px rgba(3,20,48,.08)}
+.dynamic-card img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;background:#e9edf4}
+.dynamic-card-body{padding:1rem 1.1rem 1.2rem}.dynamic-card-body h3{margin:.25rem 0 .45rem}.dynamic-meta{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:#8b6500;font-weight:800}
+.dynamic-gallery{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.5rem}.gallery-live-item{position:relative;border-radius:16px;overflow:hidden;background:#091a36;min-height:220px}.gallery-live-item img{width:100%;height:100%;aspect-ratio:4/3;object-fit:cover;display:block}.gallery-live-item figcaption{position:absolute;left:0;right:0;bottom:0;padding:2.2rem .9rem .8rem;background:linear-gradient(transparent,rgba(2,12,28,.92));color:white;font-weight:700}
+.dynamic-region-posters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25rem;margin:1.5rem 0 2rem}.region-live-card{background:#051b3d;border:1px solid rgba(232,185,62,.35);border-radius:20px;overflow:hidden;color:white;box-shadow:0 16px 40px rgba(0,0,0,.15)}.region-live-card img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block}.region-live-card .dynamic-card-body h3{color:#f5c451}.region-live-card p{color:#d8e2f2;margin:.35rem 0}
+.directory-toolbar{display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1.2rem}.directory-toolbar input,.directory-toolbar select{min-height:48px;border:1px solid #cfd7e4;border-radius:12px;padding:.7rem .9rem;background:#fff;font:inherit}.directory-toolbar input{flex:1 1 260px}.directory-toolbar select{flex:0 1 240px}
+.member-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem}.member-card{background:#fff;border-radius:18px;overflow:hidden;border:1px solid #e4e9f1;box-shadow:0 12px 28px rgba(3,20,48,.07)}.member-card img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#e9edf4}.member-card .dynamic-card-body{padding:.9rem}.member-card h3{font-size:1rem}.member-id{font-family:monospace;font-size:.78rem;color:#59657a}.status-badge{display:inline-flex;align-items:center;gap:.35rem;background:#e9f8ef;color:#12713a;border-radius:99px;padding:.28rem .55rem;font-size:.72rem;font-weight:800}.footer-admin-link{color:#d8b14f;text-decoration:none;margin-left:.45rem}.footer-admin-link:hover{text-decoration:underline}
+.dynamic-empty{grid-column:1/-1;padding:1rem;border:1px dashed #c8d0dc;border-radius:14px;color:#697489;background:rgba(255,255,255,.65)}
+@media(max-width:900px){.dynamic-grid,.dynamic-region-posters{grid-template-columns:repeat(2,minmax(0,1fr))}.dynamic-gallery,.member-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.dynamic-grid,.dynamic-region-posters,.dynamic-gallery,.member-grid{grid-template-columns:1fr}.gallery-live-item{min-height:auto}.directory-toolbar{display:grid}.directory-toolbar input,.directory-toolbar select{width:100%}}
