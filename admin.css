@@ -2,3 +2,13 @@
 
 /* Login diagnostics / fixed sign-in UX */
 .login-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:2px}.login-actions button{margin:0}.secondary-btn{background:#e8eef7!important;color:#10264b!important;border:1px solid #c4d0e3!important}.secondary-btn:hover{background:#dbe6f5!important}.login-card button:disabled{opacity:.65;cursor:not-allowed}.form-error{color:#b42318!important}.form-success{color:#067647!important}
+
+/* Separate secure Master Page */
+.master-loading{min-height:100vh;display:grid;place-items:center;padding:22px;background:radial-gradient(circle at 20% 10%,#123b77 0,#061a3b 42%,#030b18 100%)}
+.master-loading[hidden]{display:none!important}
+.master-loading-card{width:min(470px,100%);background:#fff;border-radius:24px;padding:32px;box-shadow:0 30px 80px #0008}
+.master-loading-card h1{margin:.7rem 0 .3rem}.master-loading-card p{color:var(--muted)}
+.sidebar-link{display:block;color:#cbd7e9;text-decoration:none;padding:12px 13px;border-radius:10px;font-weight:750;margin-top:14px}.sidebar-link:hover{background:#173a6c;color:#fff}
+.dashboard-status{padding:12px 14px;border-radius:12px;margin:0 0 16px;font-weight:700;border:1px solid #b7d8c3;background:#ecf8f0;color:#12613a}
+.dashboard-status.error{border-color:#f1b6ba;background:#fff1f2;color:#9d1920}
+.dashboard-status.success{border-color:#b7d8c3;background:#ecf8f0;color:#12613a}

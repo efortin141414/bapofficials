@@ -2,7 +2,17 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/member", "destination": "/member.html" }
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/master",
+      "destination": "/master.html"
+    },
+    {
+      "source": "/member",
+      "destination": "/member.html"
+    }
   ]
 }
