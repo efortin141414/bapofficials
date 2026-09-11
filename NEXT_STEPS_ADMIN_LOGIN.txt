@@ -1,0 +1,27 @@
+BAPTO MASTER ADMIN — NEXT STEPS
+
+Supabase frontend configuration is now installed in supabase-config.js.
+
+1. In Supabase, open SQL Editor and run database.sql from this package.
+2. Go to Authentication > Users and create your Master Admin user with your preferred email and password.
+   Do not put that password in the website files.
+3. Copy the new user's UUID from Authentication > Users.
+4. In SQL Editor, run the following, replacing the UUID and name:
+
+insert into public.profiles(id, full_name, role)
+values (
+  'PASTE-AUTH-USER-UUID-HERE',
+  'Your Name',
+  'master_admin'
+)
+on conflict(id)
+do update set
+  full_name = excluded.full_name,
+  role = 'master_admin';
+
+5. Upload/commit this configured website package to the GitHub repository connected to Vercel.
+6. After Vercel redeploys, open /admin on the Vercel production domain and sign in with the email/password you created in Supabase Authentication.
+
+Security reminder:
+- The sb_publishable_... key is intended for browser use.
+- Never paste a service_role or secret key into supabase-config.js, GitHub, or browser code.

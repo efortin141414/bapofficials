@@ -1,0 +1,14 @@
+BAPTO SUPABASE CONFIG CHECK
+
+Configured Project URL:
+https://fizyesuapokjgfviwulr.supabase.co
+
+Configured frontend publishable key begins with:
+sb_publishable_5A_bGn...
+
+After uploading these files to GitHub and Vercel redeploys:
+1. Open https://YOUR-VERCEL-DOMAIN/supabase-config.js?v=20260911-2
+2. Confirm it shows the fizyesuapokjgfviwulr project URL.
+3. Then open https://YOUR-VERCEL-DOMAIN/admin
+
+If /admin still shows the old "Supabase is not configured yet" message, Vercel is serving an older deployment or the wrong GitHub/root directory.
