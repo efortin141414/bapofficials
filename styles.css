@@ -295,3 +295,7 @@ p{margin-top:0}
 .region-leadership-poster img{display:block;width:100%;height:auto;aspect-ratio:3/4;object-fit:cover}
 .region-leadership-poster figcaption{margin-top:7px;color:#9fb1c9;text-align:center;font-size:.65rem}
 @media(max-width:760px){.region-leadership-feature{grid-template-columns:1fr;padding:16px;gap:18px}.region-leadership-copy{text-align:center}.region-leadership-poster{width:min(360px,100%);margin-inline:auto}.region-poster-link{justify-content:center}.region-directory-card-featured .region-title-wrap small{line-height:1.35}}
+
+/* BARMM / Cotabato chapter leadership */
+.region-local-feature{background:linear-gradient(135deg,#061a37 0%,#0a2c5d 62%,#431016 135%)}
+.region-directory-body .region-leadership-feature + .subchapter-label{margin-top:2px}

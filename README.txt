@@ -9,6 +9,9 @@ UPDATED FEATURES
 - Province/area subchapter directory with search and expandable cards
 - Membership, Accreditation Seminars, Announcements, Gallery, and Contact sections
 - Mobile responsive
+- BARMM Regional Director Nash A. Piang feature added
+- Cotabato City Commissioner Haron Bangkaling feature added
+- Region III, BARMM, and leadership images are embedded directly in index.html to prevent missing-image errors on Vercel
 
 VERCEL DEPLOYMENT
 Framework Preset: Other
