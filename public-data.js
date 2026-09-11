@@ -6,6 +6,7 @@
     const d = new Date(v + (v.length === 10 ? 'T00:00:00' : ''));
     return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
   };
+  const plainExcerpt = (v='') => String(v).replace(/^#{1,3}\s+/gm,'').replace(/\*\*|\*/g,'').replace(/^[-*]\s+/gm,'').replace(/\s+/g,' ').trim();
   const placeholder = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800"><rect width="100%" height="100%" fill="#e9edf4"/><circle cx="400" cy="300" r="120" fill="#b7c2d3"/><rect x="210" y="455" width="380" height="180" rx="90" fill="#b7c2d3"/></svg>`);
 
   function showConfigNotice(err) {
@@ -22,7 +23,7 @@
     document.getElementById('static-announcements')?.setAttribute('hidden','');
     target.innerHTML = data.map(a => `<a class="dynamic-card announcement-card-link" href="/announcement?id=${encodeURIComponent(a.id)}" aria-label="Open full announcement: ${esc(a.title)}">
       ${safeUrl(a.image_url) ? `<img src="${esc(safeUrl(a.image_url))}" alt="${esc(a.title)} poster" loading="lazy" onerror="this.classList.add('image-load-error'); this.removeAttribute('src'); this.alt='Poster image could not be loaded';">` : ''}
-      <div class="dynamic-card-body"><div class="dynamic-meta">${esc(a.category || 'Announcement')} • ${esc(fmtDate(a.event_date || a.published_at))}</div><h3>${esc(a.title)}</h3><p>${esc(a.body || '')}</p><span class="announcement-read-more">Open full announcement →</span></div>
+      <div class="dynamic-card-body"><div class="dynamic-meta">${esc(a.category || 'Announcement')} • ${esc(fmtDate(a.event_date || a.published_at))}</div><h3>${esc(a.title)}</h3><p>${esc(plainExcerpt(a.body || ''))}</p><span class="announcement-read-more">Open full announcement →</span></div>
     </a>`).join('');
   }
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>BAPTO Master Page</title>
-  <link rel="stylesheet" href="/admin.css?v=20260912-1">
+  <link rel="stylesheet" href="/admin.css?v=20260912-3">
 </head>
 <body>
 <div id="master-loading" class="master-loading">
@@ -50,79 +50,136 @@
       </div>
       <div class="panel">
         <h2>Master Access</h2>
-        <p>You are signed in to the BAPTO Master Page. Use the menu to publish announcements, upload gallery photos, manage regional leadership posters, and maintain the member directory.</p>
+        <p>You can now <strong>add, edit, replace images, publish/unpublish, and delete</strong> records from all Master Admin sections. Click <strong>Edit</strong> on any record to load it into the form.</p>
       </div>
     </section>
 
     <section id="view-announcements" class="admin-view">
-      <div class="panel"><h2>Add Announcement</h2>
+      <div class="panel form-panel" id="announcement-form-panel">
+        <div class="panel-title-row">
+          <div><span class="mode-badge" id="announcement-mode-badge">NEW</span><h2 id="announcement-form-title">Add Announcement</h2></div>
+          <button type="button" class="cancel-edit secondary-btn" data-cancel="announcement" hidden>Cancel Edit</button>
+        </div>
         <form id="announcement-form" class="admin-form">
+          <input type="hidden" name="edit_id">
+          <input type="hidden" name="existing_image_url">
           <div class="form-grid">
             <label>Title<input name="title" required></label>
             <label>Category<input name="category" placeholder="Organization / Accreditation"></label>
             <label>Event Date<input name="event_date" type="date"></label>
-            <label>Poster/Image<input name="image" type="file" accept="image/*"></label>
+            <label>Poster/Image<input name="image" type="file" accept="image/*"><small class="field-hint">Optional while editing. Choose a file only to replace the current poster.</small></label>
           </div>
-          <div class="announcement-preview-wrap"><img id="announcement-image-preview" class="announcement-upload-preview" alt="Selected announcement poster preview" hidden></div>
-          <label>Description<textarea name="body" rows="4"></textarea></label>
+          <div class="image-edit-preview" id="announcement-preview-wrap" hidden>
+            <img id="announcement-image-preview" alt="Announcement poster preview">
+            <span id="announcement-image-label">Current / selected poster</span>
+          </div>
+          <label>Description</label>
+          <div class="format-toolbar" data-for="announcement-body" aria-label="Announcement formatting toolbar">
+            <button type="button" data-format="bold"><strong>B</strong> Bold</button>
+            <button type="button" data-format="italic"><em>I</em> Italic</button>
+            <button type="button" data-format="heading">H Heading</button>
+            <button type="button" data-format="bullet">• Bullets</button>
+          </div>
+          <textarea id="announcement-body" name="body" rows="7" placeholder="Write the full announcement here. Basic formatting is supported."></textarea>
+          <small class="field-hint">Formatting uses simple Markdown: <strong>**bold**</strong>, <em>*italic*</em>, headings, and bullet lists.</small>
+          <div class="format-preview"><span>Preview</span><div id="announcement-format-preview" class="formatted-content"></div></div>
           <label class="check"><input name="published" type="checkbox" checked> Publish immediately</label>
-          <button type="submit">Save Announcement</button><span class="form-message"></span>
+          <div class="form-actions">
+            <button type="submit" class="primary-save"><span class="save-label">Save Announcement</span></button>
+            <button type="button" class="cancel-edit secondary-btn" data-cancel="announcement" hidden>Cancel Edit</button>
+            <span class="form-message"></span>
+          </div>
         </form>
       </div>
-      <div class="panel"><h2>Published & Draft Announcements</h2><div id="announcement-list" class="record-list"></div></div>
+      <div class="panel"><div class="panel-head"><h2>Published & Draft Announcements</h2><span class="panel-note">Edit, preview, or delete any item.</span></div><div id="announcement-list" class="record-list"></div></div>
     </section>
 
     <section id="view-gallery" class="admin-view">
-      <div class="panel"><h2>Upload Gallery Photo</h2>
+      <div class="panel form-panel" id="gallery-form-panel">
+        <div class="panel-title-row">
+          <div><span class="mode-badge" id="gallery-mode-badge">NEW</span><h2 id="gallery-form-title">Upload Gallery Photo</h2></div>
+          <button type="button" class="cancel-edit secondary-btn" data-cancel="gallery" hidden>Cancel Edit</button>
+        </div>
         <form id="gallery-form" class="admin-form">
+          <input type="hidden" name="edit_id">
+          <input type="hidden" name="existing_image_url">
           <div class="form-grid">
             <label>Album/Event<input name="album_name" required></label>
             <label>Region<select name="region_id" class="region-select"><option value="">National / None</option></select></label>
             <label>Event Date<input name="event_date" type="date"></label>
-            <label>Photo<input name="image" type="file" accept="image/*" required></label>
+            <label>Photo<input name="image" type="file" accept="image/*"><small class="field-hint">Required for a new photo; optional when editing.</small></label>
           </div>
+          <div class="image-edit-preview" id="gallery-preview-wrap" hidden><img id="gallery-image-preview" alt="Gallery photo preview"><span>Current / selected photo</span></div>
           <label>Caption<input name="caption"></label>
           <label class="check"><input name="published" type="checkbox" checked> Publish immediately</label>
-          <button type="submit">Upload Photo</button><span class="form-message"></span>
+          <div class="form-actions">
+            <button type="submit" class="primary-save"><span class="save-label">Upload Photo</span></button>
+            <button type="button" class="cancel-edit secondary-btn" data-cancel="gallery" hidden>Cancel Edit</button>
+            <span class="form-message"></span>
+          </div>
         </form>
       </div>
-      <div class="panel"><h2>Gallery</h2><div id="gallery-list" class="record-grid"></div></div>
+      <div class="panel"><div class="panel-head"><h2>Gallery</h2><span class="panel-note">Replace photos or change captions anytime.</span></div><div id="gallery-list" class="record-grid"></div></div>
     </section>
 
     <section id="view-regions" class="admin-view">
-      <div class="panel"><h2>Add Regional Leadership Poster</h2>
+      <div class="panel form-panel" id="region-poster-form-panel">
+        <div class="panel-title-row">
+          <div><span class="mode-badge" id="region-poster-mode-badge">NEW</span><h2 id="region-poster-form-title">Add Regional Leadership Poster</h2></div>
+          <button type="button" class="cancel-edit secondary-btn" data-cancel="region-poster" hidden>Cancel Edit</button>
+        </div>
         <form id="region-poster-form" class="admin-form">
+          <input type="hidden" name="edit_id">
+          <input type="hidden" name="existing_image_url">
           <div class="form-grid">
             <label>Region<select name="region_id" class="region-select" required></select></label>
             <label>Name<input name="person_name" required></label>
             <label>Position<input name="position" placeholder="Regional Director"></label>
-            <label>Poster<input name="image" type="file" accept="image/*" required></label>
+            <label>Poster<input name="image" type="file" accept="image/*"><small class="field-hint">Required for a new poster; optional when editing.</small></label>
           </div>
+          <div class="image-edit-preview" id="region-poster-preview-wrap" hidden><img id="region-poster-image-preview" alt="Regional poster preview"><span>Current / selected poster</span></div>
           <label>Caption<input name="caption"></label>
           <label class="check"><input name="published" type="checkbox" checked> Publish immediately</label>
-          <button type="submit">Upload Regional Poster</button><span class="form-message"></span>
+          <div class="form-actions">
+            <button type="submit" class="primary-save"><span class="save-label">Upload Regional Poster</span></button>
+            <button type="button" class="cancel-edit secondary-btn" data-cancel="region-poster" hidden>Cancel Edit</button>
+            <span class="form-message"></span>
+          </div>
         </form>
       </div>
-      <div class="panel"><h2>Regional Posters</h2><div id="region-poster-list" class="record-grid"></div></div>
+      <div class="panel"><div class="panel-head"><h2>Regional Posters</h2><span class="panel-note">Edit leadership details, region, poster, or publication status.</span></div><div id="region-poster-list" class="record-grid"></div></div>
     </section>
 
     <section id="view-members" class="admin-view">
-      <div class="panel"><h2>Add Member</h2>
+      <div class="panel form-panel" id="member-form-panel">
+        <div class="panel-title-row">
+          <div><span class="mode-badge" id="member-mode-badge">NEW</span><h2 id="member-form-title">Add Member</h2></div>
+          <button type="button" class="cancel-edit secondary-btn" data-cancel="member" hidden>Cancel Edit</button>
+        </div>
         <form id="member-form" class="admin-form">
+          <input type="hidden" name="edit_id">
+          <input type="hidden" name="existing_image_url">
           <div class="form-grid">
             <label>Member ID<input name="member_id" required placeholder="NCR-2026-000001"></label>
             <label>Region<select name="region_id" class="region-select" required></select></label>
             <label>First Name<input name="first_name" required></label>
             <label>Middle Name<input name="middle_name"></label>
             <label>Last Name<input name="last_name" required></label>
+            <label>Suffix<input name="suffix" placeholder="Jr., Sr., III"></label>
             <label>Position<input name="position" placeholder="Technical Official"></label>
             <label>Accreditation Level<input name="accreditation_level"></label>
+            <label>Date Joined<input name="joined_on" type="date"></label>
             <label>Valid Until<input name="valid_until" type="date"></label>
-            <label>Member Photo<input name="image" type="file" accept="image/*"></label>
+            <label>Member Photo<input name="image" type="file" accept="image/*"><small class="field-hint">Optional. Select a file to add or replace the photo.</small></label>
           </div>
+          <div class="image-edit-preview member-photo-preview" id="member-preview-wrap" hidden><img id="member-image-preview" alt="Member photo preview"><span>Current / selected member photo</span></div>
           <label class="check"><input name="active" type="checkbox" checked> Active member</label>
           <label class="check"><input name="public_profile" type="checkbox" checked> Show in public directory / QR verification</label>
-          <button type="submit">Save Member</button><span class="form-message"></span>
+          <div class="form-actions">
+            <button type="submit" class="primary-save"><span class="save-label">Save Member</span></button>
+            <button type="button" class="cancel-edit secondary-btn" data-cancel="member" hidden>Cancel Edit</button>
+            <span class="form-message"></span>
+          </div>
         </form>
       </div>
       <div class="panel"><div class="panel-head"><h2>Member Directory</h2><input id="admin-member-search" type="search" placeholder="Search members"></div><div id="member-list" class="record-list"></div></div>
@@ -132,6 +189,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/supabase-config.js?v=20260912-1"></script>
-<script src="/master.js?v=20260912-2"></script>
+<script src="/master.js?v=20260912-3"></script>
 </body>
 </html>

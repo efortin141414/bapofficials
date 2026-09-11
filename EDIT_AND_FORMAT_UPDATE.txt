@@ -1,0 +1,29 @@
+BAPTO MASTER ADMIN — EDIT + FORMAT UPGRADE
+
+What was added:
+1. EDIT buttons for Announcements, Gallery, Regional Posters, and Members.
+2. Clicking Edit loads the existing record into the form and changes it to EDITING mode.
+3. You can replace an existing poster/photo without deleting the record.
+4. Publish/Draft and Active/Public settings can be changed while editing.
+5. Member editing now includes suffix and date joined, in addition to existing fields.
+6. Announcement Description now supports simple formatting:
+   **bold**
+   *italic*
+   ## Heading
+   - Bullet item
+   A live preview is shown in Master Admin.
+7. Full announcement pages display the formatting safely.
+8. Cancel Edit returns the form to normal Add mode.
+
+FILES TO REPLACE ON GITHUB:
+- master.html
+- master.js
+- admin.css
+- announcement.js
+- announcement.html
+- public-data.js
+- index.html
+
+No new Supabase SQL/database changes are required for this update.
+
+After committing the files, wait for Vercel to redeploy. If the browser shows the old Master Page, use a private/incognito tab or refresh the page without cache.
