@@ -18,3 +18,5 @@ Output Directory: blank
 Install Command: blank
 
 The regional geographic groupings are based on the current Philippine Standard Geographic Code (PSGC) structure. Organizational activation/status of individual BAP chapters should be updated by the organization as appointments are confirmed.
+
+High-impact landing page refresh added September 2026. Static HTML/CSS/JS; deploy with Vercel Framework Preset: Other.
