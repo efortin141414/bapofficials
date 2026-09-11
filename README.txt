@@ -21,3 +21,5 @@ IMPORTANT BEFORE PUBLISHING
 - The inquiry form is visual/demo only. Connect it to Formspree, Supabase, or another backend to receive submissions.
 - Gallery items are placeholders. Replace them with your official photos when ready.
 - Officer and chapter content can be updated directly in index.html.
+
+UPDATE: Added a Profile of Leadership section for Gil S. Reglo with portrait, National President title, Former FIBA Referee credential, leadership biography, and leadership quote. The portrait is embedded in index.html to prevent broken images on Vercel.
