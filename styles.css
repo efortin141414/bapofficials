@@ -274,3 +274,24 @@ p{margin-top:0}
   .hero-quicklinks a{border-right:0!important;border-bottom:1px solid rgba(255,255,255,.09)!important;padding:14px 15px}.hero-quicklinks a:last-child{border-bottom:0!important}
 }
 @media(prefers-reduced-motion:reduce){.live-dot,.emblem-halo,.orbit-one,.orbit-two,.hero-emblem-frame,.floating-value-card{animation:none!important}}
+
+
+/* Region III featured leadership */
+.region-directory-card-featured{border-color:rgba(242,182,50,.48);box-shadow:0 12px 30px rgba(5,29,62,.08)}
+.region-directory-card-featured .region-directory-head{background:linear-gradient(100deg,#fff 0%,#fffaf0 100%)}
+.region-directory-card-featured .region-code{background:linear-gradient(145deg,#061b3d,#0a3f82);box-shadow:inset 0 0 0 1px rgba(255,216,116,.2),0 8px 20px rgba(5,29,62,.18)}
+.region-leadership-feature{display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,320px);gap:24px;align-items:center;margin:18px 0 20px;padding:20px;border-radius:16px;background:linear-gradient(135deg,#051a38 0%,#0a2e63 70%,#081a35 100%);color:#fff;box-shadow:0 14px 34px rgba(5,29,62,.14);overflow:hidden;position:relative}
+.region-leadership-feature:before{content:'';position:absolute;width:240px;height:240px;border-radius:50%;right:-105px;top:-115px;background:radial-gradient(circle,rgba(242,182,50,.20),transparent 68%);pointer-events:none}
+.region-leadership-copy{position:relative;z-index:1}
+.region-leadership-tag{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(242,182,50,.14);border:1px solid rgba(255,216,116,.30);color:#ffd874;font:800 .62rem 'Montserrat',sans-serif;letter-spacing:.10em}
+.region-leadership-copy h4{margin:12px 0 5px;color:#fff;font:800 clamp(1.45rem,2.4vw,2.15rem) 'Montserrat',sans-serif;letter-spacing:-.025em}
+.region-leadership-role{margin:0 0 12px!important;color:#ffd874!important;font:700 .82rem 'Montserrat',sans-serif}
+.region-leadership-copy p:not(.region-leadership-role){margin:0;color:#cfdaea;font-size:.82rem;line-height:1.65}
+.region-leadership-copy p strong{color:#fff}
+.region-poster-link{display:inline-flex;align-items:center;margin-top:15px;padding:10px 13px;border-radius:9px;background:linear-gradient(135deg,#f2b632,#ffd874);color:#071a36;font:800 .7rem 'Montserrat',sans-serif;box-shadow:0 9px 22px rgba(242,182,50,.18)}
+.region-poster-link:hover{transform:translateY(-1px)}
+.region-leadership-poster{margin:0;position:relative;z-index:1}
+.region-leadership-poster a{display:block;border-radius:13px;overflow:hidden;border:1px solid rgba(255,216,116,.35);box-shadow:0 14px 30px rgba(0,0,0,.26);background:#071a36}
+.region-leadership-poster img{display:block;width:100%;height:auto;aspect-ratio:3/4;object-fit:cover}
+.region-leadership-poster figcaption{margin-top:7px;color:#9fb1c9;text-align:center;font-size:.65rem}
+@media(max-width:760px){.region-leadership-feature{grid-template-columns:1fr;padding:16px;gap:18px}.region-leadership-copy{text-align:center}.region-leadership-poster{width:min(360px,100%);margin-inline:auto}.region-poster-link{justify-content:center}.region-directory-card-featured .region-title-wrap small{line-height:1.35}}
