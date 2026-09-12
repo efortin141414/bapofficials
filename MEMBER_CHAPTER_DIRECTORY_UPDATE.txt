@@ -1,0 +1,27 @@
+BAPTO — MEMBER + CHAPTER DIRECTORY UPDATE
+
+WHAT THIS UPDATE DOES
+1. Add Member now requires a Chapter.
+2. A "+ Add Chapter" button is available directly inside the Add Member form.
+3. A chapter created there is saved under the selected Region and automatically selected for the member.
+4. Master Admin Membership Directory can filter by Region and Chapter.
+5. Master Admin Member Directory is consolidated/grouped by Chapter with member counts.
+6. Public Member Directory now has Region + Chapter filters.
+7. Public members are grouped under their Region and Chapter automatically.
+8. Regional Chapter cards show a public member count and can jump directly to that chapter's member directory.
+
+FILES TO UPDATE IN GITHUB
+- master.html
+- master.js
+- admin.css
+- index.html
+- public-data.js
+- styles.css
+
+SUPABASE
+No database schema change is required because members already have region_id and chapter_id.
+Optional: run MEMBER_CHAPTER_DIRECTORY_UPDATE.sql in Supabase SQL Editor to add helpful indexes for faster chapter directory filtering.
+
+WORKFLOW
+Master Admin > Members > choose Region > choose an existing Chapter OR click + Add Chapter > enter member details > Save Member.
+The saved member appears automatically in the public Membership Directory under that exact Region and Chapter when Active + Public Profile are enabled.

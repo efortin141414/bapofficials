@@ -132,6 +132,7 @@
     populateMemberChapterSelect($('#member-region-select')?.value || '', $('#member-chapter-select')?.value || '');
     populateGalleryChapterSelect($('#gallery-region-select')?.value || '', $('#gallery-chapter-select')?.value || '');
     populatePosterChapterSelect($('#poster-region-select')?.value || '', $('#poster-chapter-select')?.value || '');
+    populateAdminMemberChapterFilter($('#admin-member-region-filter')?.value || '', $('#admin-member-chapter-filter')?.value || '');
   }
 
   function chapterTypeLabel(type='chapter') {
@@ -162,6 +163,12 @@
   function populateMemberChapterSelect(regionId, selected='') { populateChapterSelect($('#member-chapter-select'), regionId, selected, 'No chapter / regional only'); }
   function populateGalleryChapterSelect(regionId, selected='') { populateChapterSelect($('#gallery-chapter-select'), regionId, selected, regionId ? 'Regional gallery / no chapter' : 'Choose a region first'); }
   function populatePosterChapterSelect(regionId, selected='') { populateChapterSelect($('#poster-chapter-select'), regionId, selected, regionId ? 'Regional level / no chapter' : 'Choose a region first'); }
+  function populateAdminMemberChapterFilter(regionId, selected='') {
+    const select = $('#admin-member-chapter-filter'); if (!select) return;
+    const rows = chapters.filter(c => (!regionId || c.region_id === regionId) && c.active);
+    select.innerHTML = '<option value="">All Chapters</option><option value="__regional__">Regional / No Chapter</option>' + rows.map(c => `<option value="${c.id}">${esc(c.name)} — ${chapterTypeLabel(c.chapter_type)}</option>`).join('');
+    if (selected && [...select.options].some(o => o.value === selected)) select.value = selected;
+  }
   function validateChapterRegion(regionId, chapterId) {
     if (!chapterId) return;
     const chapter = chapters.find(c => c.id === chapterId);
@@ -218,13 +225,38 @@
   }
 
   function renderAdminMembers() {
-    const q = ($('#admin-member-search')?.value || '').toLowerCase();
-    const rows = memberCache.filter(r => `${r.member_id} ${r.first_name} ${r.middle_name || ''} ${r.last_name} ${r.suffix || ''}`.toLowerCase().includes(q));
-    $('#member-list').innerHTML = rows.map(r => {
-      const fullName = [r.first_name,r.middle_name,r.last_name,r.suffix].filter(Boolean).join(' ');
-      const open = `<a class="record-link-btn" href="/member?id=${encodeURIComponent(r.member_id)}" target="_blank" rel="noopener">View</a>`;
-      return `<div class="record-row">${r.photo_url ? `<img class="member-list-photo" src="${esc(safeUrl(r.photo_url))}" alt="${esc(fullName)}">` : '<div class="member-list-photo placeholder">No photo</div>'}<div class="grow"><strong>${esc(fullName)}</strong><small>${esc(r.member_id)} • ${esc(r.regions?.code || '')}${r.chapters?.name ? ` • ${esc(r.chapters.name)}` : ''} • ${r.active ? 'Active' : 'Inactive'} • ${r.public_profile ? 'Public' : 'Private'}</small><small>${esc(r.position || 'Technical Official')}${r.valid_until ? ` • Valid until ${fmtDate(r.valid_until)}` : ''}</small></div>${recordActions('member',r.id,open)}</div>`;
-    }).join('') || '<p>No members found.</p>';
+    const q = ($('#admin-member-search')?.value || '').trim().toLowerCase();
+    const regionFilter = $('#admin-member-region-filter')?.value || '';
+    const chapterFilter = $('#admin-member-chapter-filter')?.value || '';
+    const rows = memberCache.filter(r => {
+      const matchesText = !q || `${r.member_id} ${r.first_name} ${r.middle_name || ''} ${r.last_name} ${r.suffix || ''} ${r.regions?.name || ''} ${r.chapters?.name || ''}`.toLowerCase().includes(q);
+      const matchesRegion = !regionFilter || r.region_id === regionFilter;
+      const matchesChapter = !chapterFilter || (chapterFilter === '__regional__' ? !r.chapter_id : r.chapter_id === chapterFilter);
+      return matchesText && matchesRegion && matchesChapter;
+    });
+    const activeCount = rows.filter(r => r.active).length;
+    const publicCount = rows.filter(r => r.active && r.public_profile).length;
+    const chapterIds = new Set(rows.filter(r => r.chapter_id).map(r => r.chapter_id));
+    const summary = $('#admin-member-summary');
+    if (summary) summary.innerHTML = `<strong>${rows.length}</strong> member${rows.length===1?'':'s'} • <strong>${activeCount}</strong> active • <strong>${publicCount}</strong> public • <strong>${chapterIds.size}</strong> chapter${chapterIds.size===1?'':'s'}`;
+    const target = $('#member-list');
+    if (!rows.length) { target.innerHTML = '<p>No members found for the selected filters.</p>'; return; }
+    const groups = new Map();
+    for (const r of rows) {
+      const regionName = r.regions?.name || r.regions?.code || 'Unassigned Region';
+      const chapterName = r.chapters?.name || 'Regional / No Chapter';
+      const key = `${r.region_id || 'none'}::${r.chapter_id || 'regional'}`;
+      if (!groups.has(key)) groups.set(key,{regionName,chapterName,chapterType:r.chapters?.chapter_type || '',rows:[]});
+      groups.get(key).rows.push(r);
+    }
+    target.innerHTML = [...groups.values()].sort((a,b)=>`${a.regionName} ${a.chapterName}`.localeCompare(`${b.regionName} ${b.chapterName}`)).map(g => {
+      const members = g.rows.sort((a,b)=>`${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`)).map(r => {
+        const fullName = [r.first_name,r.middle_name,r.last_name,r.suffix].filter(Boolean).join(' ');
+        const open = `<a class="record-link-btn" href="/member?id=${encodeURIComponent(r.member_id)}" target="_blank" rel="noopener">View</a>`;
+        return `<div class="record-row">${r.photo_url ? `<img class="member-list-photo" src="${esc(safeUrl(r.photo_url))}" alt="${esc(fullName)}">` : '<div class="member-list-photo placeholder">No photo</div>'}<div class="grow"><strong>${esc(fullName)}</strong><small>${esc(r.member_id)} • ${r.active ? 'Active' : 'Inactive'} • ${r.public_profile ? 'Public' : 'Private'}</small><small>${esc(r.position || 'Technical Official')}${r.valid_until ? ` • Valid until ${fmtDate(r.valid_until)}` : ''}</small></div>${recordActions('member',r.id,open)}</div>`;
+      }).join('');
+      return `<section class="admin-member-group"><div class="admin-member-group-head"><div><span>${esc(g.regionName)}</span><h3>${esc(g.chapterName)}</h3></div><strong>${g.rows.length} member${g.rows.length===1?'':'s'}</strong></div>${members}</section>`;
+    }).join('');
   }
 
   async function loadMembers() {
@@ -295,7 +327,7 @@
     msg(form,'');
     if (kind === 'gallery') populateGalleryChapterSelect(form.elements.region_id?.value || '', '');
     if (kind === 'region-poster') populatePosterChapterSelect(form.elements.region_id?.value || '', '');
-    if (kind === 'member') populateMemberChapterSelect(form.elements.region_id?.value || '', '');
+    if (kind === 'member') { populateMemberChapterSelect(form.elements.region_id?.value || '', ''); if ($('#quick-chapter-panel')) $('#quick-chapter-panel').hidden = true; }
     if (kind === 'announcement') updateAnnouncementPreview();
   }
   function scrollToForm(kind) {
@@ -367,9 +399,11 @@
 
   function bindForms() {
     $('#admin-member-search')?.addEventListener('input', renderAdminMembers);
+    $('#admin-member-region-filter')?.addEventListener('change', e => { populateAdminMemberChapterFilter(e.target.value,''); renderAdminMembers(); });
+    $('#admin-member-chapter-filter')?.addEventListener('change', renderAdminMembers);
     $('#admin-region-search')?.addEventListener('input', renderRegionsAdmin);
     $('#admin-chapter-search')?.addEventListener('input', renderChaptersAdmin);
-    $('#member-region-select')?.addEventListener('change', e => populateMemberChapterSelect(e.target.value,''));
+    $('#member-region-select')?.addEventListener('change', e => { populateMemberChapterSelect(e.target.value,''); if ($('#quick-chapter-panel')) $('#quick-chapter-panel').hidden = true; });
     $('#gallery-region-select')?.addEventListener('change', e => populateGalleryChapterSelect(e.target.value,''));
     $('#poster-region-select')?.addEventListener('change', e => populatePosterChapterSelect(e.target.value,''));
     ['announcement','gallery','region-poster','member'].forEach(bindImageInput);
@@ -377,6 +411,36 @@
     $('#announcement-body')?.addEventListener('input', updateAnnouncementPreview);
     $$('.format-toolbar button[data-format]').forEach(b => b.addEventListener('click', () => applyFormat($('#announcement-body'),b.dataset.format)));
     updateAnnouncementPreview();
+
+    $('#quick-add-chapter-toggle')?.addEventListener('click', () => {
+      const regionId = $('#member-region-select')?.value || '';
+      const panel = $('#quick-chapter-panel');
+      const message = $('#quick-chapter-message');
+      if (!regionId) { if (message) { message.textContent = 'Select a region first.'; message.className = 'form-message form-error'; } panel.hidden = false; return; }
+      panel.hidden = !panel.hidden;
+      if (!panel.hidden) $('#quick-chapter-name')?.focus();
+    });
+    $('#quick-add-chapter-close')?.addEventListener('click', () => { $('#quick-chapter-panel').hidden = true; });
+    $('#quick-add-chapter-save')?.addEventListener('click', async () => {
+      const regionId = $('#member-region-select')?.value || '';
+      const name = ($('#quick-chapter-name')?.value || '').trim();
+      const type = $('#quick-chapter-type')?.value || 'chapter';
+      const message = $('#quick-chapter-message');
+      try {
+        if (!regionId) throw new Error('Select a region first.');
+        if (!canManageRegion(regionId)) throw new Error('You cannot create chapters for this region.');
+        if (!name) throw new Error('Enter the chapter name.');
+        if (message) { message.textContent = 'Saving chapter…'; message.className = 'form-message'; }
+        const { data, error } = await db.from('chapters').insert({region_id:regionId,name,chapter_type:type,active:true}).select('id').single();
+        if (error) throw error;
+        await loadChapters();
+        populateMemberChapterSelect(regionId,data.id);
+        $('#member-chapter-select').value = data.id;
+        $('#quick-chapter-name').value = '';
+        if (message) { message.textContent = 'Chapter saved and selected for this member.'; message.className = 'form-message form-success'; }
+        setTimeout(()=>{ if ($('#quick-chapter-panel')) $('#quick-chapter-panel').hidden = true; },900);
+      } catch (err) { if (message) { message.textContent = friendly(err); message.className = 'form-message form-error'; } }
+    });
 
     $('#region-form')?.addEventListener('submit', async e => {
       e.preventDefault(); const f = e.currentTarget; const editing = !!f.elements.edit_id.value; msg(f,editing?'Updating…':'Saving…');
@@ -447,9 +511,11 @@
     $('#member-form')?.addEventListener('submit', async e => {
       e.preventDefault(); const f = e.currentTarget; const editing = !!f.elements.edit_id.value; msg(f,editing?'Updating…':'Saving…');
       try {
-        const fd = new FormData(f); const regionId = fd.get('region_id'); if (!canManageRegion(regionId)) throw new Error('You cannot manage this region.');
+        const fd = new FormData(f); const regionId = fd.get('region_id'); const chapterId = fd.get('chapter_id') || null; if (!canManageRegion(regionId)) throw new Error('You cannot manage this region.');
+        if (!chapterId) throw new Error('Select a chapter for this member, or use + Add Chapter to create one first.');
+        validateChapterRegion(regionId, chapterId);
         let image = fd.get('existing_image_url') || null; const file = fd.get('image'); if (file?.size) image = await upload(file,'member-photos');
-        const payload = { member_id:fd.get('member_id').trim(),region_id:regionId,chapter_id:fd.get('chapter_id')||null,first_name:fd.get('first_name').trim(),middle_name:fd.get('middle_name')||null,last_name:fd.get('last_name').trim(),suffix:fd.get('suffix')||null,position:fd.get('position')||null,accreditation_level:fd.get('accreditation_level')||null,joined_on:fd.get('joined_on')||null,valid_until:fd.get('valid_until')||null,photo_url:image,active:fd.get('active')==='on',public_profile:fd.get('public_profile')==='on' };
+        const payload = { member_id:fd.get('member_id').trim(),region_id:regionId,chapter_id:chapterId,first_name:fd.get('first_name').trim(),middle_name:fd.get('middle_name')||null,last_name:fd.get('last_name').trim(),suffix:fd.get('suffix')||null,position:fd.get('position')||null,accreditation_level:fd.get('accreditation_level')||null,joined_on:fd.get('joined_on')||null,valid_until:fd.get('valid_until')||null,photo_url:image,active:fd.get('active')==='on',public_profile:fd.get('public_profile')==='on' };
         const { error } = editing ? await db.from('members').update(payload).eq('id',fd.get('edit_id')) : await db.from('members').insert({...payload,created_by:profile.id});
         if (error) throw error; resetForm('member'); msg(f,editing?'Member updated.':'Member saved.'); await refreshNonBlocking();
       } catch (err) { msg(f,friendly(err),false); }

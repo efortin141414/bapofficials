@@ -300,6 +300,8 @@ create policy "media admin delete" on storage.objects for delete to authenticate
 
 -- Helpful indexes.
 create index if not exists members_region_idx on public.members(region_id);
+create index if not exists members_chapter_idx on public.members(chapter_id);
+create index if not exists members_region_chapter_active_idx on public.members(region_id,chapter_id,active,public_profile);
 create index if not exists members_name_idx on public.members(last_name,first_name);
 create index if not exists posters_region_idx on public.regional_posters(region_id);
 create index if not exists posters_chapter_idx on public.regional_posters(chapter_id);
