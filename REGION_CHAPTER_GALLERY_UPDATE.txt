@@ -1,0 +1,72 @@
+BAPTO REGION + CHAPTER GALLERY UPDATE
+=====================================
+
+WHAT THIS UPDATE ADDS
+---------------------
+1. Master Admin > Region & Chapter Posters now has:
+   - Region dropdown
+   - Chapter dropdown filtered by the selected region
+   - Regional-level option when no chapter is selected
+
+2. Master Admin > Gallery now has:
+   - Region dropdown
+   - Chapter dropdown filtered by the selected region
+   - National / Regional / Chapter gallery assignment
+
+3. Public Regional Chapters directory now automatically displays:
+   - Regional Gallery for posters/photos assigned to the region only
+   - A separate gallery under each chapter for media assigned to that chapter
+   - Chapter gallery item counts
+
+4. Editing is supported. Moving a poster/photo to another region or chapter updates where it appears on the public directory.
+
+IMPORTANT: RUN SQL FIRST
+------------------------
+In Supabase:
+1. Open SQL Editor.
+2. Open REGION_CHAPTER_GALLERY_UPDATE.sql from this package.
+3. Paste it into a new query.
+4. Click Run.
+
+This adds chapter_id to:
+- public.gallery
+- public.regional_posters
+
+Existing posters and gallery photos are NOT deleted. They stay as regional-level items until you edit them and choose a chapter.
+
+FILES TO REPLACE IN GITHUB
+--------------------------
+At minimum replace:
+- master.html
+- master.js
+- index.html
+- public-data.js
+- styles.css
+
+Also keep the updated database.sql for future full installations.
+
+HOW TO USE
+----------
+A. REGION / CHAPTER POSTER
+Master Admin > Regional Posters
+1. Choose Region.
+2. Choose Chapter, or leave Regional level / no chapter.
+3. Enter name and position.
+4. Upload poster.
+5. Keep Publish immediately checked.
+6. Save.
+
+B. GALLERY PHOTO
+Master Admin > Gallery
+1. Enter event/album.
+2. Choose Region if the photo is regional.
+3. Choose Chapter if it belongs to a specific chapter.
+4. Upload photo and save.
+
+PUBLIC RESULT
+-------------
+Regional Chapters > expand a region.
+- Items without a chapter show under "<Region Name> Regional Gallery".
+- Items assigned to a chapter show under "<Chapter Name> Gallery".
+
+No GitHub edit is needed for future poster/photo uploads after this version is deployed.

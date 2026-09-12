@@ -106,7 +106,8 @@
           <input type="hidden" name="existing_image_url">
           <div class="form-grid">
             <label>Album/Event<input name="album_name" required></label>
-            <label>Region<select name="region_id" class="region-select"><option value="">National / None</option></select></label>
+            <label>Region<select name="region_id" id="gallery-region-select" class="region-select"><option value="">National / None</option></select></label>
+            <label>Chapter<select name="chapter_id" id="gallery-chapter-select"><option value="">No chapter / regional gallery</option></select><small class="field-hint">Choose a region first, then assign this photo to a specific chapter if needed.</small></label>
             <label>Event Date<input name="event_date" type="date"></label>
             <label>Photo<input name="image" type="file" accept="image/*"><small class="field-hint">Required for a new photo; optional when editing.</small></label>
           </div>
@@ -120,22 +121,23 @@
           </div>
         </form>
       </div>
-      <div class="panel"><div class="panel-head"><h2>Gallery</h2><span class="panel-note">Replace photos or change captions anytime.</span></div><div id="gallery-list" class="record-grid"></div></div>
+      <div class="panel"><div class="panel-head"><h2>Gallery</h2><span class="panel-note">Assign photos to National, Regional, or Chapter galleries. Published items appear automatically on the public webpage.</span></div><div id="gallery-list" class="record-grid"></div></div>
     </section>
 
     <section id="view-regions" class="admin-view">
       <div class="panel form-panel" id="region-poster-form-panel">
         <div class="panel-title-row">
-          <div><span class="mode-badge" id="region-poster-mode-badge">NEW</span><h2 id="region-poster-form-title">Add Regional Leadership Poster</h2></div>
+          <div><span class="mode-badge" id="region-poster-mode-badge">NEW</span><h2 id="region-poster-form-title">Add Region / Chapter Poster</h2></div>
           <button type="button" class="cancel-edit secondary-btn" data-cancel="region-poster" hidden>Cancel Edit</button>
         </div>
         <form id="region-poster-form" class="admin-form">
           <input type="hidden" name="edit_id">
           <input type="hidden" name="existing_image_url">
           <div class="form-grid">
-            <label>Region<select name="region_id" class="region-select" required></select></label>
+            <label>Region<select name="region_id" id="poster-region-select" class="region-select" required></select></label>
+            <label>Chapter<select name="chapter_id" id="poster-chapter-select"><option value="">Regional level / no chapter</option></select><small class="field-hint">Select a chapter to publish this poster inside that chapter gallery.</small></label>
             <label>Name<input name="person_name" required></label>
-            <label>Position<input name="position" placeholder="Regional Director"></label>
+            <label>Position<input name="position" placeholder="Regional Director / Chapter Commissioner"></label>
             <label>Poster<input name="image" type="file" accept="image/*"><small class="field-hint">Required for a new poster; optional when editing.</small></label>
           </div>
           <div class="image-edit-preview" id="region-poster-preview-wrap" hidden><img id="region-poster-image-preview" alt="Regional poster preview"><span>Current / selected poster</span></div>
@@ -148,7 +150,7 @@
           </div>
         </form>
       </div>
-      <div class="panel"><div class="panel-head"><h2>Regional Posters</h2><span class="panel-note">Edit leadership details, region, poster, or publication status.</span></div><div id="region-poster-list" class="record-grid"></div></div>
+      <div class="panel"><div class="panel-head"><h2>Region & Chapter Posters</h2><span class="panel-note">Assign every poster to a region and, when applicable, a chapter. Published posters appear automatically in the matching public gallery.</span></div><div id="region-poster-list" class="record-grid"></div></div>
     </section>
 
 
@@ -257,6 +259,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/supabase-config.js?v=20260912-1"></script>
-<script src="/master.js?v=20260912-4"></script>
+<script src="/master.js?v=20260912-5"></script>
 </body>
 </html>

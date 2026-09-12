@@ -89,6 +89,7 @@ create table if not exists public.gallery (
   album_name text not null,
   caption text,
   region_id uuid references public.regions(id) on delete set null,
+  chapter_id uuid references public.chapters(id) on delete set null,
   event_date date,
   image_url text not null,
   published boolean not null default true,
@@ -100,6 +101,7 @@ create table if not exists public.gallery (
 create table if not exists public.regional_posters (
   id uuid primary key default gen_random_uuid(),
   region_id uuid not null references public.regions(id) on delete cascade,
+  chapter_id uuid references public.chapters(id) on delete set null,
   title text,
   person_name text not null,
   position text,
@@ -110,6 +112,10 @@ create table if not exists public.regional_posters (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Compatibility for existing projects upgraded from earlier versions.
+alter table public.gallery add column if not exists chapter_id uuid references public.chapters(id) on delete set null;
+alter table public.regional_posters add column if not exists chapter_id uuid references public.chapters(id) on delete set null;
 
 create table if not exists public.members (
   id uuid primary key default gen_random_uuid(),
@@ -131,6 +137,34 @@ create table if not exists public.members (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+
+-- Ensure a selected chapter always belongs to the selected region.
+create or replace function public.enforce_chapter_region_match()
+returns trigger language plpgsql set search_path=public as $$
+begin
+  if new.chapter_id is not null then
+    if new.region_id is null or not exists (
+      select 1 from public.chapters c where c.id = new.chapter_id and c.region_id = new.region_id
+    ) then
+      raise exception 'Selected chapter does not belong to selected region';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_gallery_chapter_region on public.gallery;
+create trigger trg_gallery_chapter_region before insert or update on public.gallery
+for each row execute function public.enforce_chapter_region_match();
+
+drop trigger if exists trg_posters_chapter_region on public.regional_posters;
+create trigger trg_posters_chapter_region before insert or update on public.regional_posters
+for each row execute function public.enforce_chapter_region_match();
+
+drop trigger if exists trg_members_chapter_region on public.members;
+create trigger trg_members_chapter_region before insert or update on public.members
+for each row execute function public.enforce_chapter_region_match();
 
 create table if not exists public.seminars (
   id uuid primary key default gen_random_uuid(),
@@ -268,4 +302,6 @@ create policy "media admin delete" on storage.objects for delete to authenticate
 create index if not exists members_region_idx on public.members(region_id);
 create index if not exists members_name_idx on public.members(last_name,first_name);
 create index if not exists posters_region_idx on public.regional_posters(region_id);
+create index if not exists posters_chapter_idx on public.regional_posters(chapter_id);
 create index if not exists gallery_region_idx on public.gallery(region_id);
+create index if not exists gallery_chapter_idx on public.gallery(chapter_id);

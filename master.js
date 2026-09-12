@@ -130,6 +130,8 @@
     chapterCache = chapters;
     renderChaptersAdmin();
     populateMemberChapterSelect($('#member-region-select')?.value || '', $('#member-chapter-select')?.value || '');
+    populateGalleryChapterSelect($('#gallery-region-select')?.value || '', $('#gallery-chapter-select')?.value || '');
+    populatePosterChapterSelect($('#poster-region-select')?.value || '', $('#poster-chapter-select')?.value || '');
   }
 
   function chapterTypeLabel(type='chapter') {
@@ -150,11 +152,21 @@
     target.innerHTML = rows.map(r => `<div class="record-row"><div class="grow"><strong>${esc(r.name)}</strong><small>${esc(r.regions?.code || '')} — ${esc(r.regions?.name || '')} • ${chapterTypeLabel(r.chapter_type)} Chapter • ${r.active ? 'Active / Public' : 'Inactive / Hidden'}</small></div>${recordActions('chapter',r.id)}</div>`).join('') || '<p>No chapters found.</p>';
   }
 
-  function populateMemberChapterSelect(regionId, selected='') {
-    const select = $('#member-chapter-select'); if (!select) return;
+  function populateChapterSelect(select, regionId, selected='', emptyLabel='No chapter / regional only') {
+    if (!select) return;
     const rows = chapters.filter(c => c.region_id === regionId && (c.active || c.id === selected));
-    select.innerHTML = '<option value="">No chapter / regional only</option>' + rows.map(c => `<option value="${c.id}">${esc(c.name)} — ${chapterTypeLabel(c.chapter_type)}</option>`).join('');
+    select.innerHTML = `<option value="">${esc(emptyLabel)}</option>` + rows.map(c => `<option value="${c.id}">${esc(c.name)} — ${chapterTypeLabel(c.chapter_type)}</option>`).join('');
+    select.disabled = !regionId;
     if (selected && [...select.options].some(o => o.value === selected)) select.value = selected;
+  }
+  function populateMemberChapterSelect(regionId, selected='') { populateChapterSelect($('#member-chapter-select'), regionId, selected, 'No chapter / regional only'); }
+  function populateGalleryChapterSelect(regionId, selected='') { populateChapterSelect($('#gallery-chapter-select'), regionId, selected, regionId ? 'Regional gallery / no chapter' : 'Choose a region first'); }
+  function populatePosterChapterSelect(regionId, selected='') { populateChapterSelect($('#poster-chapter-select'), regionId, selected, regionId ? 'Regional level / no chapter' : 'Choose a region first'); }
+  function validateChapterRegion(regionId, chapterId) {
+    if (!chapterId) return;
+    const chapter = chapters.find(c => c.id === chapterId);
+    if (!chapter) throw new Error('Selected chapter was not found. Refresh the page and try again.');
+    if (chapter.region_id !== regionId) throw new Error('The selected chapter does not belong to the selected region.');
   }
 
   async function stats() {
@@ -188,21 +200,21 @@
   }
 
   async function loadGallery() {
-    let q = db.from('gallery').select('*,regions(code,name)').order('created_at', { ascending: false }).limit(100);
+    let q = db.from('gallery').select('*,regions(code,name),chapters(name,chapter_type)').order('created_at', { ascending: false }).limit(100);
     if (profile.role === 'regional_admin') q = q.eq('region_id', profile.region_id);
     const { data, error } = await q;
     if (error) throw error;
     galleryCache = data || [];
-    $('#gallery-list').innerHTML = galleryCache.map(r => `<article class="record-card"><div class="record-image-wrap"><img src="${esc(safeUrl(r.image_url))}" alt="${esc(r.caption || r.album_name)}"></div><div class="record-card-body"><strong>${esc(r.album_name)}</strong><small>${esc(r.regions?.code || 'National')} • ${fmtDate(r.event_date || r.created_at)} • ${r.published ? 'Published' : 'Draft'}</small>${r.caption ? `<p>${esc(r.caption)}</p>`:''}${recordActions('gallery',r.id)}</div></article>`).join('') || '<p>No gallery photos yet.</p>';
+    $('#gallery-list').innerHTML = galleryCache.map(r => `<article class="record-card"><div class="record-image-wrap"><img src="${esc(safeUrl(r.image_url))}" alt="${esc(r.caption || r.album_name)}"></div><div class="record-card-body"><strong>${esc(r.album_name)}</strong><small>${esc(r.regions?.code || 'National')}${r.chapters?.name ? ` • ${esc(r.chapters.name)}` : ''} • ${fmtDate(r.event_date || r.created_at)} • ${r.published ? 'Published' : 'Draft'}</small>${r.caption ? `<p>${esc(r.caption)}</p>`:''}${recordActions('gallery',r.id)}</div></article>`).join('') || '<p>No gallery photos yet.</p>';
   }
 
   async function loadPosters() {
-    let q = db.from('regional_posters').select('*,regions(code,name)').order('created_at', { ascending: false });
+    let q = db.from('regional_posters').select('*,regions(code,name),chapters(name,chapter_type)').order('created_at', { ascending: false });
     if (profile.role === 'regional_admin') q = q.eq('region_id', profile.region_id);
     const { data, error } = await q;
     if (error) throw error;
     posterCache = data || [];
-    $('#region-poster-list').innerHTML = posterCache.map(r => `<article class="record-card"><div class="record-image-wrap poster"><img src="${esc(safeUrl(r.image_url))}" alt="${esc(r.person_name)} regional poster"></div><div class="record-card-body"><strong>${esc(r.person_name || r.title)}</strong><small>${esc(r.position || '')} • ${esc(r.regions?.code || '')} • ${r.published ? 'Published' : 'Draft'}</small>${r.caption ? `<p>${esc(r.caption)}</p>`:''}${recordActions('poster',r.id)}</div></article>`).join('') || '<p>No regional posters yet.</p>';
+    $('#region-poster-list').innerHTML = posterCache.map(r => `<article class="record-card"><div class="record-image-wrap poster"><img src="${esc(safeUrl(r.image_url))}" alt="${esc(r.person_name)} regional poster"></div><div class="record-card-body"><strong>${esc(r.person_name || r.title)}</strong><small>${esc(r.position || '')} • ${esc(r.regions?.code || '')}${r.chapters?.name ? ` • ${esc(r.chapters.name)}` : ' • Regional'} • ${r.published ? 'Published' : 'Draft'}</small>${r.caption ? `<p>${esc(r.caption)}</p>`:''}${recordActions('poster',r.id)}</div></article>`).join('') || '<p>No regional posters yet.</p>';
   }
 
   function renderAdminMembers() {
@@ -255,7 +267,7 @@
     const titles = {
       'announcement':['Add Announcement','Edit Announcement','Save Announcement','Update Announcement'],
       'gallery':['Upload Gallery Photo','Edit Gallery Photo','Upload Photo','Update Gallery Photo'],
-      'region-poster':['Add Regional Leadership Poster','Edit Regional Leadership Poster','Upload Regional Poster','Update Regional Poster'],
+      'region-poster':['Add Region / Chapter Poster','Edit Region / Chapter Poster','Upload Poster','Update Poster'],
       'member':['Add Member','Edit Member','Save Member','Update Member'],
       'region':['Add Region','Edit Region','Save Region','Update Region'],
       'chapter':['Add Chapter','Edit Chapter','Save Chapter','Update Chapter']
@@ -281,6 +293,9 @@
     setPreview(kind);
     setEditMode(kind,false);
     msg(form,'');
+    if (kind === 'gallery') populateGalleryChapterSelect(form.elements.region_id?.value || '', '');
+    if (kind === 'region-poster') populatePosterChapterSelect(form.elements.region_id?.value || '', '');
+    if (kind === 'member') populateMemberChapterSelect(form.elements.region_id?.value || '', '');
     if (kind === 'announcement') updateAnnouncementPreview();
   }
   function scrollToForm(kind) {
@@ -297,13 +312,13 @@
   function beginGalleryEdit(id) {
     const r = galleryCache.find(x => x.id === id); if (!r) return;
     const f = $('#gallery-form'); resetForm('gallery');
-    f.elements.edit_id.value = r.id; f.elements.existing_image_url.value = r.image_url || ''; f.elements.album_name.value = r.album_name || ''; f.elements.region_id.value = r.region_id || ''; f.elements.event_date.value = r.event_date || ''; f.elements.caption.value = r.caption || ''; f.elements.published.checked = !!r.published;
+    f.elements.edit_id.value = r.id; f.elements.existing_image_url.value = r.image_url || ''; f.elements.album_name.value = r.album_name || ''; f.elements.region_id.value = r.region_id || ''; populateGalleryChapterSelect(r.region_id || '', r.chapter_id || ''); f.elements.chapter_id.value = r.chapter_id || ''; f.elements.event_date.value = r.event_date || ''; f.elements.caption.value = r.caption || ''; f.elements.published.checked = !!r.published;
     setPreview('gallery',r.image_url); setEditMode('gallery',true); scrollToForm('gallery');
   }
   function beginPosterEdit(id) {
     const r = posterCache.find(x => x.id === id); if (!r) return;
     const f = $('#region-poster-form'); resetForm('region-poster');
-    f.elements.edit_id.value = r.id; f.elements.existing_image_url.value = r.image_url || ''; f.elements.region_id.value = r.region_id || ''; f.elements.person_name.value = r.person_name || ''; f.elements.position.value = r.position || ''; f.elements.caption.value = r.caption || ''; f.elements.published.checked = !!r.published;
+    f.elements.edit_id.value = r.id; f.elements.existing_image_url.value = r.image_url || ''; f.elements.region_id.value = r.region_id || ''; populatePosterChapterSelect(r.region_id || '', r.chapter_id || ''); f.elements.chapter_id.value = r.chapter_id || ''; f.elements.person_name.value = r.person_name || ''; f.elements.position.value = r.position || ''; f.elements.caption.value = r.caption || ''; f.elements.published.checked = !!r.published;
     setPreview('region-poster',r.image_url); setEditMode('region-poster',true); scrollToForm('region-poster');
   }
   function beginMemberEdit(id) {
@@ -355,6 +370,8 @@
     $('#admin-region-search')?.addEventListener('input', renderRegionsAdmin);
     $('#admin-chapter-search')?.addEventListener('input', renderChaptersAdmin);
     $('#member-region-select')?.addEventListener('change', e => populateMemberChapterSelect(e.target.value,''));
+    $('#gallery-region-select')?.addEventListener('change', e => populateGalleryChapterSelect(e.target.value,''));
+    $('#poster-region-select')?.addEventListener('change', e => populatePosterChapterSelect(e.target.value,''));
     ['announcement','gallery','region-poster','member'].forEach(bindImageInput);
     $$('[data-cancel]').forEach(b => b.addEventListener('click', () => resetForm(b.dataset.cancel)));
     $('#announcement-body')?.addEventListener('input', updateAnnouncementPreview);
@@ -403,11 +420,13 @@
     $('#gallery-form')?.addEventListener('submit', async e => {
       e.preventDefault(); const f = e.currentTarget; const editing = !!f.elements.edit_id.value; msg(f,editing?'Updating…':'Uploading…');
       try {
-        const fd = new FormData(f); const regionId = fd.get('region_id') || null;
+        const fd = new FormData(f); const regionId = fd.get('region_id') || null; const chapterId = fd.get('chapter_id') || null;
         if (regionId && !canManageRegion(regionId)) throw new Error('You cannot manage this region.');
+        if (chapterId && !regionId) throw new Error('Choose a region before selecting a chapter.');
+        validateChapterRegion(regionId, chapterId);
         let image = fd.get('existing_image_url') || null; const file = fd.get('image'); if (file?.size) image = await upload(file,'gallery');
         if (!image) throw new Error('Please choose a gallery photo.');
-        const payload = { album_name:fd.get('album_name'),region_id:regionId,event_date:fd.get('event_date')||null,caption:fd.get('caption')||null,image_url:image,published:fd.get('published')==='on' };
+        const payload = { album_name:fd.get('album_name'),region_id:regionId,chapter_id:chapterId,event_date:fd.get('event_date')||null,caption:fd.get('caption')||null,image_url:image,published:fd.get('published')==='on' };
         const { error } = editing ? await db.from('gallery').update(payload).eq('id',fd.get('edit_id')) : await db.from('gallery').insert({...payload,created_by:profile.id});
         if (error) throw error; resetForm('gallery'); msg(f,editing?'Gallery item updated.':'Gallery photo uploaded.'); await refreshNonBlocking();
       } catch (err) { msg(f,friendly(err),false); }
@@ -416,9 +435,10 @@
     $('#region-poster-form')?.addEventListener('submit', async e => {
       e.preventDefault(); const f = e.currentTarget; const editing = !!f.elements.edit_id.value; msg(f,editing?'Updating…':'Uploading…');
       try {
-        const fd = new FormData(f); const regionId = fd.get('region_id'); if (!canManageRegion(regionId)) throw new Error('You cannot manage this region.');
+        const fd = new FormData(f); const regionId = fd.get('region_id'); const chapterId = fd.get('chapter_id') || null; if (!canManageRegion(regionId)) throw new Error('You cannot manage this region.');
+        validateChapterRegion(regionId, chapterId);
         let image = fd.get('existing_image_url') || null; const file = fd.get('image'); if (file?.size) image = await upload(file,'regional-posters'); if (!image) throw new Error('Please choose a regional poster.');
-        const payload = { region_id:regionId,person_name:fd.get('person_name'),position:fd.get('position')||null,caption:fd.get('caption')||null,image_url:image,published:fd.get('published')==='on' };
+        const payload = { region_id:regionId,chapter_id:chapterId,person_name:fd.get('person_name'),position:fd.get('position')||null,caption:fd.get('caption')||null,image_url:image,published:fd.get('published')==='on' };
         const { error } = editing ? await db.from('regional_posters').update(payload).eq('id',fd.get('edit_id')) : await db.from('regional_posters').insert({...payload,created_by:profile.id});
         if (error) throw error; resetForm('region-poster'); msg(f,editing?'Regional poster updated.':'Regional poster uploaded.'); await refreshNonBlocking();
       } catch (err) { msg(f,friendly(err),false); }

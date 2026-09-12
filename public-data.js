@@ -30,22 +30,22 @@
   async function loadGallery(db) {
     const target = document.getElementById('dynamic-gallery');
     if (!target) return;
-    const { data, error } = await db.from('gallery').select('*').eq('published', true).order('event_date', {ascending:false}).limit(16);
+    const { data, error } = await db.from('gallery').select('*,regions(code,name),chapters(name,chapter_type)').eq('published', true).order('event_date', {ascending:false}).limit(16);
     if (error) throw error;
     if (!data?.length) return;
     document.getElementById('static-gallery')?.setAttribute('hidden','');
-    target.innerHTML = data.map(g => `<figure class="gallery-live-item"><img src="${esc(safeUrl(g.image_url))}" alt="${esc(g.caption || g.album_name || 'BAPTO gallery photo')}" loading="lazy"><figcaption>${esc(g.caption || g.album_name || 'BAPTO Activity')}</figcaption></figure>`).join('');
+    target.innerHTML = data.map(g => `<figure class="gallery-live-item"><img src="${esc(safeUrl(g.image_url))}" alt="${esc(g.caption || g.album_name || 'BAPTO gallery photo')}" loading="lazy"><figcaption><strong>${esc(g.caption || g.album_name || 'BAPTO Activity')}</strong>${g.regions?.name ? `<small>${esc(g.regions.code || '')}${g.chapters?.name ? ` • ${esc(g.chapters.name)}` : ' • Regional Gallery'}</small>` : '<small>National Gallery</small>'}</figcaption></figure>`).join('');
   }
 
   async function loadRegionPosters(db) {
     const target = document.getElementById('dynamic-region-posters');
     if (!target) return;
-    const { data, error } = await db.from('regional_posters').select('*, regions(code,name)').eq('published', true).order('created_at', {ascending:false});
+    const { data, error } = await db.from('regional_posters').select('*, regions(code,name), chapters(name,chapter_type)').eq('published', true).order('created_at', {ascending:false});
     if (error) throw error;
     if (!data?.length) return;
     target.innerHTML = data.map(p => `<article class="region-live-card">
       <img src="${esc(safeUrl(p.image_url))}" alt="${esc(p.person_name || p.title)} regional poster" loading="lazy">
-      <div class="dynamic-card-body"><div class="dynamic-meta">${esc(p.regions?.code || '')} • ${esc(p.regions?.name || '')}</div><h3>${esc(p.person_name || p.title || 'Regional Leadership')}</h3><p><strong>${esc(p.position || '')}</strong></p>${p.caption ? `<p>${esc(p.caption)}</p>`:''}</div>
+      <div class="dynamic-card-body"><div class="dynamic-meta">${esc(p.regions?.code || '')} • ${esc(p.regions?.name || '')}${p.chapters?.name ? ` • ${esc(p.chapters.name)}` : ' • Regional'}</div><h3>${esc(p.person_name || p.title || 'Regional Leadership')}</h3><p><strong>${esc(p.position || '')}</strong></p>${p.caption ? `<p>${esc(p.caption)}</p>`:''}</div>
     </article>`).join('');
   }
 
@@ -53,16 +53,42 @@
     return ({provincial:'Provincial Chapters',city:'City Chapters',municipal:'Municipal Chapters',area:'Area Chapters',chapter:'Local Chapters'})[type] || 'Local Chapters';
   }
 
+  function directoryMediaCard(item) {
+    const image = safeUrl(item.image_url);
+    if (!image) return '';
+    const isPoster = item._kind === 'poster';
+    const title = isPoster ? (item.person_name || item.title || 'Regional Poster') : (item.caption || item.album_name || 'Gallery Photo');
+    const subtitle = isPoster ? (item.position || 'Leadership Poster') : (item.album_name || 'Gallery');
+    return `<figure class="directory-media-card ${isPoster ? 'is-poster' : 'is-gallery'}">
+      <img src="${esc(image)}" alt="${esc(title)}" loading="lazy">
+      <figcaption><strong>${esc(title)}</strong><small>${esc(subtitle)}</small></figcaption>
+    </figure>`;
+  }
+
+  function mediaSection(title, items, emptyText='') {
+    const cards = items.map(directoryMediaCard).filter(Boolean).join('');
+    if (!cards) return emptyText ? `<div class="directory-media-section empty"><h4>${esc(title)}</h4><p>${esc(emptyText)}</p></div>` : '';
+    return `<section class="directory-media-section"><div class="directory-media-title"><h4>${esc(title)}</h4><span>${items.length} item${items.length===1?'':'s'}</span></div><div class="directory-media-grid">${cards}</div></section>`;
+  }
+
   async function loadChapterDirectory(db) {
     const target = document.getElementById('regionDirectory');
     if (!target) return;
-    const [regionsRes, chaptersRes] = await Promise.all([
+    const [regionsRes, chaptersRes, galleryRes, postersRes] = await Promise.all([
       db.from('regions').select('id,code,name,sort_order').eq('active',true).order('sort_order').order('name'),
-      db.from('chapters').select('id,region_id,name,chapter_type').eq('active',true).order('name')
+      db.from('chapters').select('id,region_id,name,chapter_type').eq('active',true).order('name'),
+      db.from('gallery').select('id,album_name,caption,region_id,chapter_id,event_date,image_url,created_at').eq('published',true).order('event_date',{ascending:false}),
+      db.from('regional_posters').select('id,title,person_name,position,caption,region_id,chapter_id,image_url,created_at').eq('published',true).order('created_at',{ascending:false})
     ]);
     if (regionsRes.error) throw regionsRes.error;
     if (chaptersRes.error) throw chaptersRes.error;
+    if (galleryRes.error) throw galleryRes.error;
+    if (postersRes.error) throw postersRes.error;
     const regions = regionsRes.data || [], chapters = chaptersRes.data || [];
+    const media = [
+      ...(galleryRes.data || []).map(x => ({...x,_kind:'gallery'})),
+      ...(postersRes.data || []).map(x => ({...x,_kind:'poster'}))
+    ];
     const regionCount = document.getElementById('region-count'); if (regionCount) regionCount.textContent = String(regions.length);
     const chapterCount = document.getElementById('chapter-count'); if (chapterCount) chapterCount.textContent = String(chapters.length);
     target.innerHTML = regions.map(r => {
@@ -70,16 +96,26 @@
       const groups = ['provincial','city','municipal','area','chapter'].map(type => {
         const items = rs.filter(c => (c.chapter_type || 'chapter') === type);
         if (!items.length) return '';
-        return `<p class="subchapter-label">${chapterGroupLabel(type)}</p><div class="subchapter-chips">${items.map(c=>`<span class="subchapter-chip">${esc(c.name)}</span>`).join('')}</div>`;
+        return `<p class="subchapter-label">${chapterGroupLabel(type)}</p><div class="subchapter-chips">${items.map(c=>`<a class="subchapter-chip" href="#chapter-${esc(c.id)}">${esc(c.name)}</a>`).join('')}</div>`;
+      }).join('');
+      const regionMedia = media.filter(m => m.region_id === r.id && !m.chapter_id);
+      const chapterGalleries = rs.map(c => {
+        const cm = media.filter(m => m.chapter_id === c.id);
+        if (!cm.length) return '';
+        return `<section class="chapter-gallery-block" id="chapter-${esc(c.id)}"><div class="chapter-gallery-heading"><div><span>${esc(chapterGroupLabel(c.chapter_type).replace(' Chapters',''))}</span><h4>${esc(c.name)} Gallery</h4></div><strong>${cm.length}</strong></div><div class="directory-media-grid">${cm.map(directoryMediaCard).join('')}</div></section>`;
       }).join('');
       const search = [r.code,r.name,...rs.map(c=>c.name)].join(' ').toLowerCase();
       return `<article class="region-directory-card" data-region="${esc(search)}">
         <button aria-expanded="false" class="region-directory-head" type="button">
           <span class="region-code">${esc(r.code)}</span>
-          <span class="region-title-wrap"><strong>${esc(r.name)}</strong><small>${rs.length} active chapter${rs.length===1?'':'s'}</small></span>
+          <span class="region-title-wrap"><strong>${esc(r.name)}</strong><small>${rs.length} active chapter${rs.length===1?'':'s'} • ${media.filter(m=>m.region_id===r.id).length} gallery item${media.filter(m=>m.region_id===r.id).length===1?'':'s'}</small></span>
           <span aria-hidden="true" class="region-toggle">＋</span>
         </button>
-        <div class="region-directory-body" hidden>${groups || '<p class="region-structure-note">No active local chapters published yet.</p>'}</div>
+        <div class="region-directory-body" hidden>
+          ${groups || '<p class="region-structure-note">No active local chapters published yet.</p>'}
+          ${mediaSection(`${r.name} Regional Gallery`, regionMedia)}
+          ${chapterGalleries || '<p class="chapter-gallery-empty">No chapter-specific gallery items have been published yet.</p>'}
+        </div>
       </article>`;
     }).join('') || '<div class="dynamic-empty">No active regions are published yet.</div>';
     document.getElementById('regionNoResults')?.removeAttribute('hidden');

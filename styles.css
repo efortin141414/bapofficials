@@ -327,3 +327,28 @@ p{margin-top:0}
 /* Supabase-driven Regional Chapter directory */
 #regionDirectory .region-directory-body .subchapter-label:not(:first-child){margin-top:18px}
 #regionDirectory .region-directory-card[hidden]{display:none!important}
+
+/* ===== Region + Chapter Galleries ===== */
+.subchapter-chip{text-decoration:none;cursor:pointer;transition:background .18s ease,border-color .18s ease,transform .18s ease}
+.subchapter-chip:hover,.subchapter-chip:focus-visible{background:#fff8e8;border-color:#e7b93d;transform:translateY(-1px);outline:none}
+.gallery-live-item figcaption{display:flex;flex-direction:column;gap:.22rem}
+.gallery-live-item figcaption strong{font-size:.9rem;line-height:1.25}
+.gallery-live-item figcaption small{font-size:.68rem;line-height:1.25;color:#d7e0ed;text-transform:uppercase;letter-spacing:.06em}
+.directory-media-section{margin-top:22px;padding-top:18px;border-top:1px solid #e7ecf3}
+.directory-media-section.empty p,.chapter-gallery-empty{color:#738096;font-size:.82rem}
+.directory-media-title,.chapter-gallery-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px}
+.directory-media-title h4,.chapter-gallery-heading h4{margin:0;color:#082c5b;font:800 .95rem 'Montserrat',sans-serif}
+.directory-media-title span{font-size:.7rem;font-weight:800;color:#8d6a12;background:#fff7df;border:1px solid #f0db9a;border-radius:999px;padding:4px 8px}
+.directory-media-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.directory-media-card{margin:0;position:relative;border-radius:12px;overflow:hidden;background:#071a36;min-height:150px;box-shadow:0 8px 18px rgba(5,29,62,.1)}
+.directory-media-card img{width:100%;height:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.directory-media-card.is-poster img{aspect-ratio:4/5}
+.directory-media-card figcaption{position:absolute;left:0;right:0;bottom:0;padding:2.4rem .7rem .65rem;background:linear-gradient(transparent,rgba(1,11,28,.95));color:#fff;display:flex;flex-direction:column;gap:2px}
+.directory-media-card figcaption strong{font-size:.72rem;line-height:1.18}
+.directory-media-card figcaption small{font-size:.61rem;color:#d7e2ef;line-height:1.2}
+.chapter-gallery-block{margin-top:20px;padding:16px;border-radius:14px;background:#fff;border:1px solid #e0e7f0;scroll-margin-top:96px}
+.chapter-gallery-heading span{display:block;font-size:.62rem;font-weight:900;text-transform:uppercase;letter-spacing:.09em;color:#a06b00;margin-bottom:2px}
+.chapter-gallery-heading strong{display:grid;place-items:center;min-width:30px;height:30px;padding:0 8px;border-radius:999px;background:#071f43;color:#f7c94e;font-size:.72rem}
+@media(max-width:1050px){.directory-media-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.directory-media-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.chapter-gallery-block{padding:12px}.region-directory-body{padding-left:14px;padding-right:14px}}
+@media(max-width:430px){.directory-media-grid{grid-template-columns:1fr 1fr;gap:8px}.directory-media-card{min-height:120px}.directory-media-card figcaption strong{font-size:.67rem}}
