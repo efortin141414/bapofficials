@@ -27,6 +27,7 @@
       <button data-view="announcements">Announcements</button>
       <button data-view="gallery">Gallery</button>
       <button data-view="regions">Regional Posters</button>
+      <button data-view="directory">Regions & Chapters</button>
       <button data-view="members">Members</button>
     </nav>
     <a class="sidebar-link" href="/" target="_blank" rel="noopener">Open Public Website</a>
@@ -50,7 +51,7 @@
       </div>
       <div class="panel">
         <h2>Master Access</h2>
-        <p>You can now <strong>add, edit, replace images, publish/unpublish, and delete</strong> records from all Master Admin sections. Click <strong>Edit</strong> on any record to load it into the form.</p>
+        <p>You can now <strong>add, edit, publish, organize regions and chapters, manage members, replace images, and delete</strong> records from all Master Admin sections. Regions and chapters saved here automatically appear in the public Regional Chapters directory.</p>
       </div>
     </section>
 
@@ -150,6 +151,72 @@
       <div class="panel"><div class="panel-head"><h2>Regional Posters</h2><span class="panel-note">Edit leadership details, region, poster, or publication status.</span></div><div id="region-poster-list" class="record-grid"></div></div>
     </section>
 
+
+    <section id="view-directory" class="admin-view">
+      <div class="directory-admin-grid">
+        <div class="panel form-panel" id="region-form-panel" data-master-only>
+          <div class="panel-title-row">
+            <div><span class="mode-badge" id="region-mode-badge">NEW</span><h2 id="region-form-title">Add Region</h2></div>
+            <button type="button" class="cancel-edit secondary-btn" data-cancel="region" hidden>Cancel Edit</button>
+          </div>
+          <p class="panel-note">Master Admin only. Saved active regions appear automatically on the public directory.</p>
+          <form id="region-form" class="admin-form">
+            <input type="hidden" name="edit_id">
+            <div class="form-grid">
+              <label>Region Code<input name="code" required placeholder="III / NCR / BARMM"></label>
+              <label>Region Name<input name="name" required placeholder="Central Luzon"></label>
+              <label>Sort Order<input name="sort_order" type="number" min="1" step="1" value="999"></label>
+            </div>
+            <label class="check"><input name="active" type="checkbox" checked> Active / show on public directory</label>
+            <div class="form-actions">
+              <button type="submit" class="primary-save"><span class="save-label">Save Region</span></button>
+              <button type="button" class="cancel-edit secondary-btn" data-cancel="region" hidden>Cancel Edit</button>
+              <span class="form-message"></span>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel form-panel" id="chapter-form-panel">
+          <div class="panel-title-row">
+            <div><span class="mode-badge" id="chapter-mode-badge">NEW</span><h2 id="chapter-form-title">Add Chapter</h2></div>
+            <button type="button" class="cancel-edit secondary-btn" data-cancel="chapter" hidden>Cancel Edit</button>
+          </div>
+          <p class="panel-note">Choose the parent region. Once saved as active, the chapter appears under that region on the public webpage.</p>
+          <form id="chapter-form" class="admin-form">
+            <input type="hidden" name="edit_id">
+            <div class="form-grid">
+              <label>Region<select name="region_id" class="region-select" required></select></label>
+              <label>Chapter Name<input name="name" required placeholder="Pampanga / Quezon City"></label>
+              <label>Chapter Type
+                <select name="chapter_type">
+                  <option value="provincial">Provincial Chapter</option>
+                  <option value="city">City Chapter</option>
+                  <option value="municipal">Municipal Chapter</option>
+                  <option value="area">Area Chapter</option>
+                  <option value="chapter">Local Chapter</option>
+                </select>
+              </label>
+            </div>
+            <label class="check"><input name="active" type="checkbox" checked> Active / show on public directory</label>
+            <div class="form-actions">
+              <button type="submit" class="primary-save"><span class="save-label">Save Chapter</span></button>
+              <button type="button" class="cancel-edit secondary-btn" data-cancel="chapter" hidden>Cancel Edit</button>
+              <span class="form-message"></span>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Region Database</h2><input id="admin-region-search" type="search" placeholder="Search regions"></div>
+        <div id="region-list" class="record-list"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Chapter Database</h2><input id="admin-chapter-search" type="search" placeholder="Search chapters or region"></div>
+        <div id="chapter-list" class="record-list"></div>
+      </div>
+    </section>
+
     <section id="view-members" class="admin-view">
       <div class="panel form-panel" id="member-form-panel">
         <div class="panel-title-row">
@@ -161,7 +228,8 @@
           <input type="hidden" name="existing_image_url">
           <div class="form-grid">
             <label>Member ID<input name="member_id" required placeholder="NCR-2026-000001"></label>
-            <label>Region<select name="region_id" class="region-select" required></select></label>
+            <label>Region<select name="region_id" class="region-select" id="member-region-select" required></select></label>
+            <label>Chapter<select name="chapter_id" id="member-chapter-select"><option value="">No chapter / regional only</option></select></label>
             <label>First Name<input name="first_name" required></label>
             <label>Middle Name<input name="middle_name"></label>
             <label>Last Name<input name="last_name" required></label>
@@ -189,6 +257,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/supabase-config.js?v=20260912-1"></script>
-<script src="/master.js?v=20260912-3"></script>
+<script src="/master.js?v=20260912-4"></script>
 </body>
 </html>

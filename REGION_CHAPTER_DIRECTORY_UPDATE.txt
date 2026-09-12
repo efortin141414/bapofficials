@@ -1,0 +1,36 @@
+BAPTO REGIONS & CHAPTERS MASTER DATABASE UPDATE
+
+WHAT IS NEW
+- New Master Admin menu: Regions & Chapters
+- Add/Edit/Delete/Activate regions
+- Add/Edit/Delete/Activate chapters under a region
+- Chapter types: Provincial, City, Municipal, Area, Local
+- Public Regional Chapters directory now reads live from Supabase
+- Once an active region/chapter is saved, it appears automatically on the webpage
+- Member form now lets you assign each member to a chapter
+- Public member cards can show the member's chapter
+
+FILES TO REPLACE IN GITHUB
+- master.html
+- master.js
+- admin.css
+- index.html
+- public-data.js
+- script.js
+- styles.css
+- member.js
+
+SUPABASE
+Your previous database.sql already creates regions and chapters. If those tables already exist, you do not need to rerun the full database.sql.
+If the new page says the regions/chapters table or policy is missing, run REGION_CHAPTER_UPDATE.sql in Supabase > SQL Editor.
+
+HOW TO USE
+1. Open /master and choose Regions & Chapters.
+2. Add or edit a Region. Keep Active checked if it should be public.
+3. Add a Chapter, select its parent Region and Chapter Type.
+4. Keep Active checked and Save.
+5. Open the public website > Regional Chapters. Refresh once. The saved region/chapter will appear automatically.
+6. In Members, choose a Region first; the Chapter dropdown will then show chapters in that region.
+
+NOTE
+Deleting a region that already has chapters, members, posters, or other linked records may be blocked by the database. In that case, edit the region and turn off Active instead of deleting it.

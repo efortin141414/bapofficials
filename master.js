@@ -1,6 +1,7 @@
 (function () {
-  let db, profile, regions = [];
+  let db, profile, regions = [], chapters = [];
   let announcementCache = [], galleryCache = [], posterCache = [], memberCache = [];
+  let regionCache = [], chapterCache = [];
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
   const esc = (v = '') => String(v).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -33,6 +34,9 @@
     if (/row-level security|permission denied/i.test(m)) return `Permission problem: ${m}. Check the Supabase RLS policies in database.sql.`;
     if (/failed to fetch|network|load failed/i.test(m)) return 'Cannot reach Supabase. Check the project status and internet connection.';
     if (/duplicate key.*member_id/i.test(m)) return 'That Member ID already exists. Use a unique Member ID.';
+    if (/duplicate key.*regions.*code|duplicate key.*code/i.test(m)) return 'That region code already exists. Edit the existing region or use another code.';
+    if (/duplicate key.*chapters|duplicate key.*region_id.*name/i.test(m)) return 'That chapter name already exists in the selected region.';
+    if (/foreign key constraint/i.test(m)) return 'This record is already linked to other data. Edit it and turn off Active instead of deleting it.';
     return m;
   }
   function fileExt(file) {
@@ -101,13 +105,56 @@
   }
 
   async function loadRegions() {
-    const { data, error } = await db.from('regions').select('id,code,name,sort_order').eq('active', true).order('sort_order');
+    let q = db.from('regions').select('id,code,name,sort_order,active').order('sort_order').order('name');
+    if (profile.role === 'regional_admin') q = q.or(`active.eq.true,id.eq.${profile.region_id}`);
+    const { data, error } = await q;
     if (error) throw error;
     regions = data || [];
+    regionCache = regions;
     $$('.region-select').forEach(s => {
+      const current = s.value;
       const keep = s.querySelector('option[value=""]')?.outerHTML || '';
-      s.innerHTML = keep + regions.filter(r => profile.role === 'master_admin' || r.id === profile.region_id).map(r => `<option value="${r.id}">${esc(r.code)} — ${esc(r.name)}</option>`).join('');
+      const allowed = regions.filter(r => (r.active || r.id === current) && (profile.role === 'master_admin' || r.id === profile.region_id));
+      s.innerHTML = keep + allowed.map(r => `<option value="${r.id}">${esc(r.code)} — ${esc(r.name)}${r.active ? '' : ' (Inactive)'}</option>`).join('');
+      if (current && [...s.options].some(o => o.value === current)) s.value = current;
     });
+    renderRegionsAdmin();
+  }
+
+  async function loadChapters() {
+    let q = db.from('chapters').select('id,region_id,name,chapter_type,active,created_at,regions(code,name)').order('name');
+    if (profile.role === 'regional_admin') q = q.eq('region_id', profile.region_id);
+    const { data, error } = await q;
+    if (error) throw error;
+    chapters = data || [];
+    chapterCache = chapters;
+    renderChaptersAdmin();
+    populateMemberChapterSelect($('#member-region-select')?.value || '', $('#member-chapter-select')?.value || '');
+  }
+
+  function chapterTypeLabel(type='chapter') {
+    return ({provincial:'Provincial',city:'City',municipal:'Municipal',area:'Area',chapter:'Local'})[type] || 'Local';
+  }
+
+  function renderRegionsAdmin() {
+    const target = $('#region-list'); if (!target) return;
+    const q = ($('#admin-region-search')?.value || '').trim().toLowerCase();
+    const rows = regionCache.filter(r => !q || `${r.code} ${r.name}`.toLowerCase().includes(q));
+    target.innerHTML = rows.map(r => `<div class="record-row"><div class="grow"><strong>${esc(r.code)} — ${esc(r.name)}</strong><small>Sort ${Number(r.sort_order)||999} • ${r.active ? 'Active / Public' : 'Inactive / Hidden'}</small></div>${profile.role === 'master_admin' ? recordActions('region',r.id) : ''}</div>`).join('') || '<p>No regions found.</p>';
+  }
+
+  function renderChaptersAdmin() {
+    const target = $('#chapter-list'); if (!target) return;
+    const q = ($('#admin-chapter-search')?.value || '').trim().toLowerCase();
+    const rows = chapterCache.filter(r => !q || `${r.name} ${r.chapter_type} ${r.regions?.code||''} ${r.regions?.name||''}`.toLowerCase().includes(q));
+    target.innerHTML = rows.map(r => `<div class="record-row"><div class="grow"><strong>${esc(r.name)}</strong><small>${esc(r.regions?.code || '')} — ${esc(r.regions?.name || '')} • ${chapterTypeLabel(r.chapter_type)} Chapter • ${r.active ? 'Active / Public' : 'Inactive / Hidden'}</small></div>${recordActions('chapter',r.id)}</div>`).join('') || '<p>No chapters found.</p>';
+  }
+
+  function populateMemberChapterSelect(regionId, selected='') {
+    const select = $('#member-chapter-select'); if (!select) return;
+    const rows = chapters.filter(c => c.region_id === regionId && (c.active || c.id === selected));
+    select.innerHTML = '<option value="">No chapter / regional only</option>' + rows.map(c => `<option value="${c.id}">${esc(c.name)} — ${chapterTypeLabel(c.chapter_type)}</option>`).join('');
+    if (selected && [...select.options].some(o => o.value === selected)) select.value = selected;
   }
 
   async function stats() {
@@ -164,12 +211,12 @@
     $('#member-list').innerHTML = rows.map(r => {
       const fullName = [r.first_name,r.middle_name,r.last_name,r.suffix].filter(Boolean).join(' ');
       const open = `<a class="record-link-btn" href="/member?id=${encodeURIComponent(r.member_id)}" target="_blank" rel="noopener">View</a>`;
-      return `<div class="record-row">${r.photo_url ? `<img class="member-list-photo" src="${esc(safeUrl(r.photo_url))}" alt="${esc(fullName)}">` : '<div class="member-list-photo placeholder">No photo</div>'}<div class="grow"><strong>${esc(fullName)}</strong><small>${esc(r.member_id)} • ${esc(r.regions?.code || '')} • ${r.active ? 'Active' : 'Inactive'} • ${r.public_profile ? 'Public' : 'Private'}</small><small>${esc(r.position || 'Technical Official')}${r.valid_until ? ` • Valid until ${fmtDate(r.valid_until)}` : ''}</small></div>${recordActions('member',r.id,open)}</div>`;
+      return `<div class="record-row">${r.photo_url ? `<img class="member-list-photo" src="${esc(safeUrl(r.photo_url))}" alt="${esc(fullName)}">` : '<div class="member-list-photo placeholder">No photo</div>'}<div class="grow"><strong>${esc(fullName)}</strong><small>${esc(r.member_id)} • ${esc(r.regions?.code || '')}${r.chapters?.name ? ` • ${esc(r.chapters.name)}` : ''} • ${r.active ? 'Active' : 'Inactive'} • ${r.public_profile ? 'Public' : 'Private'}</small><small>${esc(r.position || 'Technical Official')}${r.valid_until ? ` • Valid until ${fmtDate(r.valid_until)}` : ''}</small></div>${recordActions('member',r.id,open)}</div>`;
     }).join('') || '<p>No members found.</p>';
   }
 
   async function loadMembers() {
-    let q = db.from('members').select('*,regions(code,name)').order('last_name');
+    let q = db.from('members').select('*,regions(code,name),chapters(name,chapter_type)').order('last_name');
     if (profile.role === 'regional_admin') q = q.eq('region_id', profile.region_id);
     const { data, error } = await q;
     if (error) throw error;
@@ -178,7 +225,7 @@
   }
 
   async function refreshNonBlocking() {
-    const jobs = [['statistics',stats],['announcements',loadAnnouncements],['gallery',loadGallery],['regional posters',loadPosters],['members',loadMembers]];
+    const jobs = [['statistics',stats],['regions',loadRegions],['chapters',loadChapters],['announcements',loadAnnouncements],['gallery',loadGallery],['regional posters',loadPosters],['members',loadMembers]];
     const results = await Promise.allSettled(jobs.map(([, fn]) => fn()));
     const failed = results.map((r, i) => r.status === 'rejected' ? `${jobs[i][0]}: ${friendly(r.reason)}` : null).filter(Boolean);
     if (failed.length) dashboardStatus(`Master Page opened, but some data could not load yet. ${failed.join(' | ')}`, true);
@@ -209,7 +256,9 @@
       'announcement':['Add Announcement','Edit Announcement','Save Announcement','Update Announcement'],
       'gallery':['Upload Gallery Photo','Edit Gallery Photo','Upload Photo','Update Gallery Photo'],
       'region-poster':['Add Regional Leadership Poster','Edit Regional Leadership Poster','Upload Regional Poster','Update Regional Poster'],
-      'member':['Add Member','Edit Member','Save Member','Update Member']
+      'member':['Add Member','Edit Member','Save Member','Update Member'],
+      'region':['Add Region','Edit Region','Save Region','Update Region'],
+      'chapter':['Add Chapter','Edit Chapter','Save Chapter','Update Chapter']
     };
     const [addTitle,editTitle,addSave,editSave] = titles[kind];
     $(`#${kind}-form-title`).textContent = editing ? editTitle : addTitle;
@@ -225,7 +274,7 @@
     if (!form) return;
     form.reset();
     form.elements.edit_id.value = '';
-    form.elements.existing_image_url.value = '';
+    if (form.elements.existing_image_url) form.elements.existing_image_url.value = '';
     if (form.elements.published) form.elements.published.checked = true;
     if (form.elements.active) form.elements.active.checked = true;
     if (form.elements.public_profile) form.elements.public_profile.checked = true;
@@ -260,8 +309,21 @@
   function beginMemberEdit(id) {
     const r = memberCache.find(x => x.id === id); if (!r) return;
     const f = $('#member-form'); resetForm('member');
-    f.elements.edit_id.value = r.id; f.elements.existing_image_url.value = r.photo_url || ''; f.elements.member_id.value = r.member_id || ''; f.elements.region_id.value = r.region_id || ''; f.elements.first_name.value = r.first_name || ''; f.elements.middle_name.value = r.middle_name || ''; f.elements.last_name.value = r.last_name || ''; f.elements.suffix.value = r.suffix || ''; f.elements.position.value = r.position || ''; f.elements.accreditation_level.value = r.accreditation_level || ''; f.elements.joined_on.value = r.joined_on || ''; f.elements.valid_until.value = r.valid_until || ''; f.elements.active.checked = !!r.active; f.elements.public_profile.checked = !!r.public_profile;
+    f.elements.edit_id.value = r.id; f.elements.existing_image_url.value = r.photo_url || ''; f.elements.member_id.value = r.member_id || ''; f.elements.region_id.value = r.region_id || ''; populateMemberChapterSelect(r.region_id || '', r.chapter_id || ''); f.elements.chapter_id.value = r.chapter_id || ''; f.elements.first_name.value = r.first_name || ''; f.elements.middle_name.value = r.middle_name || ''; f.elements.last_name.value = r.last_name || ''; f.elements.suffix.value = r.suffix || ''; f.elements.position.value = r.position || ''; f.elements.accreditation_level.value = r.accreditation_level || ''; f.elements.joined_on.value = r.joined_on || ''; f.elements.valid_until.value = r.valid_until || ''; f.elements.active.checked = !!r.active; f.elements.public_profile.checked = !!r.public_profile;
     setPreview('member',r.photo_url); setEditMode('member',true); scrollToForm('member');
+  }
+
+  function beginRegionEdit(id) {
+    const r = regionCache.find(x => x.id === id); if (!r || profile.role !== 'master_admin') return;
+    const f = $('#region-form'); resetForm('region');
+    f.elements.edit_id.value = r.id; f.elements.code.value = r.code || ''; f.elements.name.value = r.name || ''; f.elements.sort_order.value = r.sort_order ?? 999; f.elements.active.checked = !!r.active;
+    setEditMode('region',true); scrollToForm('region');
+  }
+  function beginChapterEdit(id) {
+    const r = chapterCache.find(x => x.id === id); if (!r) return;
+    const f = $('#chapter-form'); resetForm('chapter');
+    f.elements.edit_id.value = r.id; f.elements.region_id.value = r.region_id || ''; f.elements.name.value = r.name || ''; f.elements.chapter_type.value = r.chapter_type || 'chapter'; f.elements.active.checked = !!r.active;
+    setEditMode('chapter',true); scrollToForm('chapter');
   }
 
   function updateAnnouncementPreview() {
@@ -290,11 +352,38 @@
 
   function bindForms() {
     $('#admin-member-search')?.addEventListener('input', renderAdminMembers);
+    $('#admin-region-search')?.addEventListener('input', renderRegionsAdmin);
+    $('#admin-chapter-search')?.addEventListener('input', renderChaptersAdmin);
+    $('#member-region-select')?.addEventListener('change', e => populateMemberChapterSelect(e.target.value,''));
     ['announcement','gallery','region-poster','member'].forEach(bindImageInput);
     $$('[data-cancel]').forEach(b => b.addEventListener('click', () => resetForm(b.dataset.cancel)));
     $('#announcement-body')?.addEventListener('input', updateAnnouncementPreview);
     $$('.format-toolbar button[data-format]').forEach(b => b.addEventListener('click', () => applyFormat($('#announcement-body'),b.dataset.format)));
     updateAnnouncementPreview();
+
+    $('#region-form')?.addEventListener('submit', async e => {
+      e.preventDefault(); const f = e.currentTarget; const editing = !!f.elements.edit_id.value; msg(f,editing?'Updating…':'Saving…');
+      try {
+        if (profile.role !== 'master_admin') throw new Error('Only the Master Admin can create or edit regions.');
+        const fd = new FormData(f);
+        const payload = { code:String(fd.get('code')||'').trim().toUpperCase(), name:String(fd.get('name')||'').trim(), sort_order:Number(fd.get('sort_order')||999), active:fd.get('active')==='on' };
+        if (!payload.code || !payload.name) throw new Error('Region code and region name are required.');
+        const { error } = editing ? await db.from('regions').update(payload).eq('id',fd.get('edit_id')) : await db.from('regions').insert(payload);
+        if (error) throw error; resetForm('region'); msg(f,editing?'Region updated. Public directory refreshed.':'Region saved. It will appear on the public directory when active.'); await refreshNonBlocking();
+      } catch (err) { msg(f,friendly(err),false); }
+    });
+
+    $('#chapter-form')?.addEventListener('submit', async e => {
+      e.preventDefault(); const f = e.currentTarget; const editing = !!f.elements.edit_id.value; msg(f,editing?'Updating…':'Saving…');
+      try {
+        const fd = new FormData(f); const regionId = fd.get('region_id');
+        if (!canManageRegion(regionId)) throw new Error('You cannot manage chapters for this region.');
+        const payload = { region_id:regionId, name:String(fd.get('name')||'').trim(), chapter_type:fd.get('chapter_type')||'chapter', active:fd.get('active')==='on' };
+        if (!payload.name) throw new Error('Chapter name is required.');
+        const { error } = editing ? await db.from('chapters').update(payload).eq('id',fd.get('edit_id')) : await db.from('chapters').insert(payload);
+        if (error) throw error; resetForm('chapter'); msg(f,editing?'Chapter updated. Public directory refreshed.':'Chapter saved. It will appear under its region on the public directory when active.'); await refreshNonBlocking();
+      } catch (err) { msg(f,friendly(err),false); }
+    });
 
     $('#announcement-form')?.addEventListener('submit', async e => {
       e.preventDefault(); const f = e.currentTarget; const editing = !!f.elements.edit_id.value; msg(f, editing ? 'Updating…' : 'Saving…');
@@ -340,7 +429,7 @@
       try {
         const fd = new FormData(f); const regionId = fd.get('region_id'); if (!canManageRegion(regionId)) throw new Error('You cannot manage this region.');
         let image = fd.get('existing_image_url') || null; const file = fd.get('image'); if (file?.size) image = await upload(file,'member-photos');
-        const payload = { member_id:fd.get('member_id').trim(),region_id:regionId,first_name:fd.get('first_name').trim(),middle_name:fd.get('middle_name')||null,last_name:fd.get('last_name').trim(),suffix:fd.get('suffix')||null,position:fd.get('position')||null,accreditation_level:fd.get('accreditation_level')||null,joined_on:fd.get('joined_on')||null,valid_until:fd.get('valid_until')||null,photo_url:image,active:fd.get('active')==='on',public_profile:fd.get('public_profile')==='on' };
+        const payload = { member_id:fd.get('member_id').trim(),region_id:regionId,chapter_id:fd.get('chapter_id')||null,first_name:fd.get('first_name').trim(),middle_name:fd.get('middle_name')||null,last_name:fd.get('last_name').trim(),suffix:fd.get('suffix')||null,position:fd.get('position')||null,accreditation_level:fd.get('accreditation_level')||null,joined_on:fd.get('joined_on')||null,valid_until:fd.get('valid_until')||null,photo_url:image,active:fd.get('active')==='on',public_profile:fd.get('public_profile')==='on' };
         const { error } = editing ? await db.from('members').update(payload).eq('id',fd.get('edit_id')) : await db.from('members').insert({...payload,created_by:profile.id});
         if (error) throw error; resetForm('member'); msg(f,editing?'Member updated.':'Member saved.'); await refreshNonBlocking();
       } catch (err) { msg(f,friendly(err),false); }
@@ -352,12 +441,16 @@
       if (b.dataset.editGallery) return beginGalleryEdit(b.dataset.editGallery);
       if (b.dataset.editPoster) return beginPosterEdit(b.dataset.editPoster);
       if (b.dataset.editMember) return beginMemberEdit(b.dataset.editMember);
+      if (b.dataset.editRegion) return beginRegionEdit(b.dataset.editRegion);
+      if (b.dataset.editChapter) return beginChapterEdit(b.dataset.editChapter);
 
       let table,id;
       if (b.dataset.delAnn) { table='announcements'; id=b.dataset.delAnn; }
       if (b.dataset.delGallery) { table='gallery'; id=b.dataset.delGallery; }
       if (b.dataset.delPoster) { table='regional_posters'; id=b.dataset.delPoster; }
       if (b.dataset.delMember) { table='members'; id=b.dataset.delMember; }
+      if (b.dataset.delRegion) { if (profile.role !== 'master_admin') return; table='regions'; id=b.dataset.delRegion; }
+      if (b.dataset.delChapter) { table='chapters'; id=b.dataset.delChapter; }
       if (!table) return;
       if (!confirm('Delete this record? This cannot be undone.')) return;
       const { error } = await db.from(table).delete().eq('id',id);
@@ -371,9 +464,10 @@
       const ok = await requireSessionAndProfile(); if (!ok) return;
       $('#master-loading').hidden = true; $('#app-view').hidden = false;
       bindForms();
+      $$('[data-master-only]').forEach(el => el.hidden = profile.role !== 'master_admin');
       $$('#admin-nav button').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
       $('#logout-btn')?.addEventListener('click', async () => { await db.auth.signOut(); window.location.replace('/admin'); });
-      try { await loadRegions(); } catch (err) { dashboardStatus(`Master Page opened, but regions could not load: ${friendly(err)}`,true); }
+      try { await loadRegions(); await loadChapters(); } catch (err) { dashboardStatus(`Master Page opened, but directory data could not load: ${friendly(err)}`,true); }
       await refreshNonBlocking();
     } catch (err) {
       setLoading(friendly(err),true);

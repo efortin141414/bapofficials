@@ -17,48 +17,46 @@ if (toggle && nav) {
 document.getElementById('year').textContent = new Date().getFullYear();
 
 
-// Regional chapter directory accordions, search, and expand/collapse controls
-const regionCards = [...document.querySelectorAll('.region-directory-card')];
+// Regional chapter directory accordions, search, and expand/collapse controls.
+// Uses event delegation so chapters added from Supabase work immediately.
+const regionDirectory = document.getElementById('regionDirectory');
 const regionSearch = document.getElementById('regionSearch');
 const expandRegions = document.getElementById('expandRegions');
 const noRegionResults = document.getElementById('regionNoResults');
 
+function currentRegionCards() { return [...document.querySelectorAll('.region-directory-card')]; }
 function setRegionOpen(card, open) {
   const button = card.querySelector('.region-directory-head');
   const body = card.querySelector('.region-directory-body');
+  const icon = card.querySelector('.region-toggle');
   if (!button || !body) return;
   button.setAttribute('aria-expanded', open ? 'true' : 'false');
   body.hidden = !open;
+  if (icon) icon.textContent = open ? '−' : '＋';
 }
 
-regionCards.forEach(card => {
-  const button = card.querySelector('.region-directory-head');
-  if (button) button.addEventListener('click', () => {
-    setRegionOpen(card, button.getAttribute('aria-expanded') !== 'true');
-  });
+regionDirectory?.addEventListener('click', e => {
+  const button = e.target.closest('.region-directory-head');
+  if (!button) return;
+  const card = button.closest('.region-directory-card');
+  if (card) setRegionOpen(card, button.getAttribute('aria-expanded') !== 'true');
 });
 
-if (regionSearch) {
-  regionSearch.addEventListener('input', () => {
-    const q = regionSearch.value.trim().toLowerCase();
-    let visible = 0;
-    regionCards.forEach(card => {
-      const match = !q || (card.dataset.region || '').includes(q);
-      card.hidden = !match;
-      if (match) {
-        visible++;
-        if (q) setRegionOpen(card, true);
-      }
-    });
-    if (noRegionResults) noRegionResults.hidden = visible !== 0;
+function filterRegions() {
+  const q = (regionSearch?.value || '').trim().toLowerCase();
+  let visible = 0;
+  currentRegionCards().forEach(card => {
+    const match = !q || (card.dataset.region || '').includes(q);
+    card.hidden = !match;
+    if (match) { visible++; if (q) setRegionOpen(card,true); }
   });
+  if (noRegionResults) noRegionResults.hidden = visible !== 0;
 }
+regionSearch?.addEventListener('input', filterRegions);
 
-if (expandRegions) {
-  expandRegions.addEventListener('click', () => {
-    const visibleCards = regionCards.filter(card => !card.hidden);
-    const allOpen = visibleCards.length > 0 && visibleCards.every(card => card.querySelector('.region-directory-head')?.getAttribute('aria-expanded') === 'true');
-    visibleCards.forEach(card => setRegionOpen(card, !allOpen));
-    expandRegions.textContent = allOpen ? 'Expand All' : 'Collapse All';
-  });
-}
+expandRegions?.addEventListener('click', () => {
+  const visibleCards = currentRegionCards().filter(card => !card.hidden);
+  const allOpen = visibleCards.length > 0 && visibleCards.every(card => card.querySelector('.region-directory-head')?.getAttribute('aria-expanded') === 'true');
+  visibleCards.forEach(card => setRegionOpen(card,!allOpen));
+  expandRegions.textContent = allOpen ? 'Expand All' : 'Collapse All';
+});

@@ -49,6 +49,44 @@
     </article>`).join('');
   }
 
+  function chapterGroupLabel(type) {
+    return ({provincial:'Provincial Chapters',city:'City Chapters',municipal:'Municipal Chapters',area:'Area Chapters',chapter:'Local Chapters'})[type] || 'Local Chapters';
+  }
+
+  async function loadChapterDirectory(db) {
+    const target = document.getElementById('regionDirectory');
+    if (!target) return;
+    const [regionsRes, chaptersRes] = await Promise.all([
+      db.from('regions').select('id,code,name,sort_order').eq('active',true).order('sort_order').order('name'),
+      db.from('chapters').select('id,region_id,name,chapter_type').eq('active',true).order('name')
+    ]);
+    if (regionsRes.error) throw regionsRes.error;
+    if (chaptersRes.error) throw chaptersRes.error;
+    const regions = regionsRes.data || [], chapters = chaptersRes.data || [];
+    const regionCount = document.getElementById('region-count'); if (regionCount) regionCount.textContent = String(regions.length);
+    const chapterCount = document.getElementById('chapter-count'); if (chapterCount) chapterCount.textContent = String(chapters.length);
+    target.innerHTML = regions.map(r => {
+      const rs = chapters.filter(c => c.region_id === r.id);
+      const groups = ['provincial','city','municipal','area','chapter'].map(type => {
+        const items = rs.filter(c => (c.chapter_type || 'chapter') === type);
+        if (!items.length) return '';
+        return `<p class="subchapter-label">${chapterGroupLabel(type)}</p><div class="subchapter-chips">${items.map(c=>`<span class="subchapter-chip">${esc(c.name)}</span>`).join('')}</div>`;
+      }).join('');
+      const search = [r.code,r.name,...rs.map(c=>c.name)].join(' ').toLowerCase();
+      return `<article class="region-directory-card" data-region="${esc(search)}">
+        <button aria-expanded="false" class="region-directory-head" type="button">
+          <span class="region-code">${esc(r.code)}</span>
+          <span class="region-title-wrap"><strong>${esc(r.name)}</strong><small>${rs.length} active chapter${rs.length===1?'':'s'}</small></span>
+          <span aria-hidden="true" class="region-toggle">＋</span>
+        </button>
+        <div class="region-directory-body" hidden>${groups || '<p class="region-structure-note">No active local chapters published yet.</p>'}</div>
+      </article>`;
+    }).join('') || '<div class="dynamic-empty">No active regions are published yet.</div>';
+    document.getElementById('regionNoResults')?.removeAttribute('hidden');
+    if (document.getElementById('regionNoResults')) document.getElementById('regionNoResults').hidden = true;
+    document.getElementById('regionSearch')?.dispatchEvent(new Event('input'));
+  }
+
   let allMembers = [];
   function renderMembers() {
     const target = document.getElementById('dynamic-members');
@@ -58,7 +96,7 @@
     const rows = allMembers.filter(m => (!region || m.region_id === region) && (!q || `${m.member_id} ${m.first_name} ${m.middle_name||''} ${m.last_name}`.toLowerCase().includes(q)));
     target.innerHTML = rows.length ? rows.slice(0,80).map(m => `<article class="member-card">
       <img src="${esc(safeUrl(m.photo_url) || placeholder)}" alt="Member photo" loading="lazy">
-      <div class="dynamic-card-body"><span class="status-badge">✓ ACTIVE</span><h3>${esc([m.first_name,m.middle_name,m.last_name].filter(Boolean).join(' '))}</h3><div class="member-id">${esc(m.member_id)}</div><p>${esc(m.position || 'Technical Official')}<br>${esc(m.regions?.name || '')}</p><a href="/member?id=${encodeURIComponent(m.member_id)}">View verification profile</a></div>
+      <div class="dynamic-card-body"><span class="status-badge">✓ ACTIVE</span><h3>${esc([m.first_name,m.middle_name,m.last_name].filter(Boolean).join(' '))}</h3><div class="member-id">${esc(m.member_id)}</div><p>${esc(m.position || 'Technical Official')}<br>${esc(m.regions?.name || '')}${m.chapters?.name ? `<br><strong>${esc(m.chapters.name)}</strong>` : ''}</p><a href="/member?id=${encodeURIComponent(m.member_id)}">View verification profile</a></div>
     </article>`).join('') : '<div class="dynamic-empty">No matching published members found.</div>';
   }
 
@@ -66,7 +104,7 @@
     const target = document.getElementById('dynamic-members');
     if (!target) return;
     const [membersRes, regionsRes] = await Promise.all([
-      db.from('members').select('id,member_id,first_name,middle_name,last_name,position,photo_url,region_id,regions(name)').eq('active',true).eq('public_profile',true).order('last_name'),
+      db.from('members').select('id,member_id,first_name,middle_name,last_name,position,photo_url,region_id,chapter_id,regions(name),chapters(name)').eq('active',true).eq('public_profile',true).order('last_name'),
       db.from('regions').select('id,code,name').eq('active',true).order('sort_order')
     ]);
     if (membersRes.error) throw membersRes.error;
@@ -82,7 +120,7 @@
   document.addEventListener('DOMContentLoaded', async () => {
     try {
       const db = window.getBaptoSupabase();
-      await Promise.allSettled([loadAnnouncements(db), loadGallery(db), loadRegionPosters(db), loadMembers(db)]);
+      await Promise.allSettled([loadAnnouncements(db), loadGallery(db), loadRegionPosters(db), loadChapterDirectory(db), loadMembers(db)]);
     } catch (err) { showConfigNotice(err); }
   });
 })();
