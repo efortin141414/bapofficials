@@ -224,6 +224,24 @@
     $('#region-poster-list').innerHTML = posterCache.map(r => `<article class="record-card"><div class="record-image-wrap poster"><img src="${esc(safeUrl(r.image_url))}" alt="${esc(r.person_name)} regional poster"></div><div class="record-card-body"><strong>${esc(r.person_name || r.title)}</strong><small>${esc(r.position || '')} • ${esc(r.regions?.code || '')}${r.chapters?.name ? ` • ${esc(r.chapters.name)}` : ' • Regional'} • ${r.published ? 'Published' : 'Draft'}</small>${r.caption ? `<p>${esc(r.caption)}</p>`:''}${recordActions('poster',r.id)}</div></article>`).join('') || '<p>No regional posters yet.</p>';
   }
 
+  function memberLeadershipRank(position='') {
+    const p = String(position || '').trim().toLowerCase();
+    if (!p) return 100;
+    if (/regional\s+director/.test(p)) return 10;
+    if (/regional\s+commissioner/.test(p)) return 20;
+    if (/(city|provincial|province|municipal|chapter|district|area)\s+commissioner/.test(p)) return 30;
+    if (/deputy.*commissioner|commissioner.*deputy/.test(p)) return 40;
+    if (/director/.test(p)) return 50;
+    if (/commissioner/.test(p)) return 60;
+    return 100;
+  }
+
+  function memberDirectorySort(a,b) {
+    const rank = memberLeadershipRank(a.position) - memberLeadershipRank(b.position);
+    if (rank) return rank;
+    return `${a.last_name || ''} ${a.first_name || ''}`.localeCompare(`${b.last_name || ''} ${b.first_name || ''}`, undefined, {sensitivity:'base'});
+  }
+
   function renderAdminMembers() {
     const q = ($('#admin-member-search')?.value || '').trim().toLowerCase();
     const regionFilter = $('#admin-member-region-filter')?.value || '';
@@ -250,10 +268,10 @@
       groups.get(key).rows.push(r);
     }
     target.innerHTML = [...groups.values()].sort((a,b)=>`${a.regionName} ${a.chapterName}`.localeCompare(`${b.regionName} ${b.chapterName}`)).map(g => {
-      const members = g.rows.sort((a,b)=>`${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`)).map(r => {
+      const members = g.rows.sort(memberDirectorySort).map(r => {
         const fullName = [r.first_name,r.middle_name,r.last_name,r.suffix].filter(Boolean).join(' ');
         const open = `<a class="record-link-btn" href="/member?id=${encodeURIComponent(r.member_id)}" target="_blank" rel="noopener">View</a>`;
-        return `<div class="record-row">${r.photo_url ? `<img class="member-list-photo" src="${esc(safeUrl(r.photo_url))}" alt="${esc(fullName)}">` : '<div class="member-list-photo placeholder">No photo</div>'}<div class="grow"><strong>${esc(fullName)}</strong><small>${esc(r.member_id)} • ${r.active ? 'Active' : 'Inactive'} • ${r.public_profile ? 'Public' : 'Private'}</small><small>${esc(r.position || 'Technical Official')}${r.valid_until ? ` • Valid until ${fmtDate(r.valid_until)}` : ''}</small></div>${recordActions('member',r.id,open)}</div>`;
+        return `<div class="record-row">${r.photo_url ? `<img class="member-list-photo" src="${esc(safeUrl(r.photo_url))}" alt="${esc(fullName)}">` : '<div class="member-list-photo placeholder">No photo</div>'}<div class="grow"><strong>${esc(fullName)}</strong><small>${esc(r.member_id)} • ${r.active ? 'Active' : 'Inactive'} • ${r.public_profile ? 'Public' : 'Private'}</small><small>${memberLeadershipRank(r.position) < 100 ? '<span class="leadership-order-badge">LEADERSHIP</span> ' : ''}${esc(r.position || 'Technical Official')}${r.valid_until ? ` • Valid until ${fmtDate(r.valid_until)}` : ''}</small></div>${recordActions('member',r.id,open)}</div>`;
       }).join('');
       return `<section class="admin-member-group"><div class="admin-member-group-head"><div><span>${esc(g.regionName)}</span><h3>${esc(g.chapterName)}</h3></div><strong>${g.rows.length} member${g.rows.length===1?'':'s'}</strong></div>${members}</section>`;
     }).join('');

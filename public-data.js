@@ -138,10 +138,28 @@
     if (selected && [...select.options].some(o=>o.value===selected)) select.value = selected;
   }
 
+  function memberLeadershipRank(position='') {
+    const p = String(position || '').trim().toLowerCase();
+    if (!p) return 100;
+    if (/regional\s+director/.test(p)) return 10;
+    if (/regional\s+commissioner/.test(p)) return 20;
+    if (/(city|provincial|province|municipal|chapter|district|area)\s+commissioner/.test(p)) return 30;
+    if (/deputy.*commissioner|commissioner.*deputy/.test(p)) return 40;
+    if (/director/.test(p)) return 50;
+    if (/commissioner/.test(p)) return 60;
+    return 100;
+  }
+
+  function memberDirectorySort(a,b) {
+    const rank = memberLeadershipRank(a.position) - memberLeadershipRank(b.position);
+    if (rank) return rank;
+    return `${a.last_name || ''} ${a.first_name || ''}`.localeCompare(`${b.last_name || ''} ${b.first_name || ''}`, undefined, {sensitivity:'base'});
+  }
+
   function memberCard(m) {
     return `<article class="member-card">
       <img src="${esc(safeUrl(m.photo_url) || placeholder)}" alt="Member photo" loading="lazy">
-      <div class="dynamic-card-body"><span class="status-badge">✓ ACTIVE</span><h3>${esc([m.first_name,m.middle_name,m.last_name,m.suffix].filter(Boolean).join(' '))}</h3><div class="member-id">${esc(m.member_id)}</div><p>${esc(m.position || 'Technical Official')}<br>${esc(m.regions?.name || '')}${m.chapters?.name ? `<br><strong>${esc(m.chapters.name)}</strong>` : ''}</p><a href="/member?id=${encodeURIComponent(m.member_id)}">View verification profile</a></div>
+      <div class="dynamic-card-body"><div class="member-badge-row"><span class="status-badge">✓ ACTIVE</span>${memberLeadershipRank(m.position) < 100 ? '<span class="leadership-order-badge">LEADERSHIP</span>' : ''}</div><h3>${esc([m.first_name,m.middle_name,m.last_name,m.suffix].filter(Boolean).join(' '))}</h3><div class="member-id">${esc(m.member_id)}</div><p>${esc(m.position || 'Technical Official')}<br>${esc(m.regions?.name || '')}${m.chapters?.name ? `<br><strong>${esc(m.chapters.name)}</strong>` : ''}</p><a href="/member?id=${encodeURIComponent(m.member_id)}">View verification profile</a></div>
     </article>`;
   }
 
@@ -167,7 +185,7 @@
     }
     target.innerHTML = [...groups.values()].sort((a,b)=>`${a.regionName} ${a.chapterName}`.localeCompare(`${b.regionName} ${b.chapterName}`)).map(g => `<section class="public-member-group">
       <div class="public-member-group-head"><div><span>${esc(g.regionCode)} • ${esc(g.regionName)}</span><h3>${esc(g.chapterName)}</h3></div><strong>${g.rows.length} member${g.rows.length===1?'':'s'}</strong></div>
-      <div class="member-grid">${g.rows.sort((a,b)=>`${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`)).map(memberCard).join('')}</div>
+      <div class="member-grid">${g.rows.sort(memberDirectorySort).map(memberCard).join('')}</div>
     </section>`).join('');
   }
 

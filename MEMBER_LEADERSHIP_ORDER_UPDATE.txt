@@ -1,0 +1,29 @@
+BAPTO MEMBER DIRECTORY – LEADERSHIP FIRST
+
+This update automatically sorts each Region/Chapter membership directory so leadership appears before regular members.
+
+ORDER USED
+1. Regional Director
+2. Regional Commissioner
+3. City / Provincial / Municipal / Chapter / District / Area Commissioner
+4. Deputy Commissioner
+5. Other positions containing Director
+6. Other positions containing Commissioner
+7. All other members, alphabetically by last name and first name
+
+The ordering works in both:
+- Master Admin Membership Directory
+- Public Membership Directory on the website
+
+Leadership records also receive a LEADERSHIP badge.
+
+IMPORTANT
+The Position field controls the priority. Examples:
+- Regional Director
+- City Commissioner
+- Deputy City Commissioner
+- Chapter Commissioner
+- Technical Official
+- Member
+
+No Supabase database change is required. Replace master.js, public-data.js, admin.css, styles.css, master.html, and index.html in GitHub, commit, and allow Vercel to redeploy.
