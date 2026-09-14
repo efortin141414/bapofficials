@@ -17,6 +17,10 @@
     {
       "source": "/announcement",
       "destination": "/announcement.html"
+    },
+    {
+      "source": "/chapter",
+      "destination": "/chapter.html"
     }
   ]
 }

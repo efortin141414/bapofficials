@@ -122,7 +122,7 @@
   }
 
   async function loadChapters() {
-    let q = db.from('chapters').select('id,region_id,name,chapter_type,active,created_at,regions(code,name)').order('name');
+    let q = db.from('chapters').select('id,region_id,name,chapter_type,locality_code,locality_name,locality_type,active,created_at,regions(code,name)').order('name');
     if (profile.role === 'regional_admin') q = q.eq('region_id', profile.region_id);
     const { data, error } = await q;
     if (error) throw error;
@@ -132,11 +132,86 @@
     populateMemberChapterSelect($('#member-region-select')?.value || '', $('#member-chapter-select')?.value || '');
     populateGalleryChapterSelect($('#gallery-region-select')?.value || '', $('#gallery-chapter-select')?.value || '');
     populatePosterChapterSelect($('#poster-region-select')?.value || '', $('#poster-chapter-select')?.value || '');
-    populateAdminMemberChapterFilter($('#admin-member-region-filter')?.value || '', $('#admin-member-chapter-filter')?.value || '');
+    populateAdminMemberChapterFilter($('#admin-member-region-filter')?.value || '', $('#admin-member-chapter-filter')?.value || '', $('#admin-member-locality-filter')?.value || '');
   }
 
   function chapterTypeLabel(type='chapter') {
     return ({provincial:'Provincial',city:'City',municipal:'Municipal',area:'Area',chapter:'Local'})[type] || 'Local';
+  }
+
+  const PSGC_REGION_CODE = {
+    'I':'0100000000','II':'0200000000','III':'0300000000','IV-A':'0400000000','V':'0500000000',
+    'VI':'0600000000','VII':'0700000000','VIII':'0800000000','IX':'0900000000','X':'1000000000',
+    'XI':'1100000000','XII':'1200000000','NCR':'1300000000','CAR':'1400000000','XIII':'1600000000',
+    'MIMAROPA':'1700000000','NIR':'1800000000','BARMM':'1900000000'
+  };
+  const localityCache = new Map();
+
+  function regionRecord(regionId) { return regions.find(r => r.id === regionId); }
+  function normalizeLocalityItems(payload) {
+    const rows = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+    return rows.map(x => ({
+      code:String(x.code || x.psgc_code || x.psgc10DigitCode || '').trim(),
+      name:String(x.name || x.area_name || '').trim(),
+      type:String(x.type || x.geographic_level || '').trim() || (/city/i.test(String(x.name||'')) ? 'City' : 'Municipality')
+    })).filter(x => x.code && x.name).sort((a,b)=>a.name.localeCompare(b.name));
+  }
+  async function fetchLocalities(regionId) {
+    if (!regionId) return [];
+    if (localityCache.has(regionId)) return localityCache.get(regionId);
+    const region = regionRecord(regionId);
+    const psgc = PSGC_REGION_CODE[region?.code];
+    if (!psgc) return [];
+    const controller = new AbortController();
+    const timer = setTimeout(()=>controller.abort(),10000);
+    try {
+      const res = await fetch(`https://psgc.cloud/api/v2/regions/${encodeURIComponent(psgc)}/cities-municipalities`, {signal:controller.signal, headers:{'Accept':'application/json'}});
+      if (!res.ok) throw new Error(`Location service returned ${res.status}`);
+      const rows = normalizeLocalityItems(await res.json());
+      localityCache.set(regionId, rows);
+      return rows;
+    } finally { clearTimeout(timer); }
+  }
+  function localityMeta(select) {
+    const o = select?.selectedOptions?.[0];
+    return {code:select?.value || '', name:o?.dataset?.name || '', type:o?.dataset?.type || ''};
+  }
+  function writeLocalityHidden(form, select) {
+    const meta = localityMeta(select);
+    if (form?.elements.locality_name) form.elements.locality_name.value = meta.name;
+    if (form?.elements.locality_type) form.elements.locality_type.value = meta.type;
+    return meta;
+  }
+  async function populateLocalitySelect(select, regionId, selectedCode='', selectedName='', allowBlank=true, blankLabel='Regional / no city-municipality') {
+    if (!select) return;
+    select.disabled = true;
+    select.innerHTML = `<option value="">${regionId ? 'Loading cities & municipalities…' : 'Select a region first'}</option>`;
+    if (!regionId) return;
+    try {
+      const rows = await fetchLocalities(regionId);
+      const blank = allowBlank ? `<option value="">${esc(blankLabel)}</option>` : '<option value="">Select City / Municipality</option>';
+      select.innerHTML = blank + rows.map(x=>`<option value="${esc(x.code)}" data-name="${esc(x.name)}" data-type="${esc(x.type)}">${esc(x.name)} — ${esc(x.type)}</option>`).join('');
+      if (selectedCode && [...select.options].some(o=>o.value===selectedCode)) select.value = selectedCode;
+      else if (selectedName) { const opt=[...select.options].find(o=>(o.dataset.name||'').toLowerCase()===selectedName.toLowerCase()); if(opt) select.value=opt.value; }
+      select.disabled = false;
+    } catch (err) {
+      console.warn('Could not load PSGC localities',err);
+      select.innerHTML = `<option value="${esc(selectedCode)}" data-name="${esc(selectedName)}" data-type="">${selectedName ? esc(selectedName) : 'Location list unavailable — try again'}</option>`;
+      select.disabled = false;
+    }
+  }
+  function todayISO() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+  function plusTwoYearsISO(dateStr) {
+    if (!dateStr) return '';
+    const [y,m,d]=String(dateStr).split('-').map(Number);
+    if (!y||!m||!d) return '';
+    const endDay=Math.min(d,new Date(y+2,m,0).getDate());
+    return `${y+2}-${String(m).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`;
+  }
+  function syncMemberValidity(forceJoined=false) {
+    const f=$('#member-form'); if(!f) return;
+    if (forceJoined && !f.elements.joined_on.value) f.elements.joined_on.value=todayISO();
+    f.elements.valid_until.value=plusTwoYearsISO(f.elements.joined_on.value);
   }
 
   function renderRegionsAdmin() {
@@ -150,23 +225,23 @@
     const target = $('#chapter-list'); if (!target) return;
     const q = ($('#admin-chapter-search')?.value || '').trim().toLowerCase();
     const rows = chapterCache.filter(r => !q || `${r.name} ${r.chapter_type} ${r.regions?.code||''} ${r.regions?.name||''}`.toLowerCase().includes(q));
-    target.innerHTML = rows.map(r => `<div class="record-row"><div class="grow"><strong>${esc(r.name)}</strong><small>${esc(r.regions?.code || '')} — ${esc(r.regions?.name || '')} • ${chapterTypeLabel(r.chapter_type)} Chapter • ${r.active ? 'Active / Public' : 'Inactive / Hidden'}</small></div>${recordActions('chapter',r.id)}</div>`).join('') || '<p>No chapters found.</p>';
+    target.innerHTML = rows.map(r => `<div class="record-row"><div class="grow"><strong>${esc(r.name)}</strong><small>${esc(r.regions?.code || '')} — ${esc(r.regions?.name || '')} • ${r.locality_name ? `${esc(r.locality_name)} • ` : ''}${chapterTypeLabel(r.chapter_type)} Chapter • ${r.active ? 'Active / Public' : 'Inactive / Hidden'}</small></div>${recordActions('chapter',r.id)}</div>`).join('') || '<p>No chapters found.</p>';
   }
 
-  function populateChapterSelect(select, regionId, selected='', emptyLabel='No chapter / regional only') {
+  function populateChapterSelect(select, regionId, selected='', emptyLabel='No chapter / regional only', localityCode='') {
     if (!select) return;
-    const rows = chapters.filter(c => c.region_id === regionId && (c.active || c.id === selected));
-    select.innerHTML = `<option value="">${esc(emptyLabel)}</option>` + rows.map(c => `<option value="${c.id}">${esc(c.name)} — ${chapterTypeLabel(c.chapter_type)}</option>`).join('');
+    const rows = chapters.filter(c => c.region_id === regionId && (c.active || c.id === selected) && (!localityCode || !c.locality_code || c.locality_code === localityCode));
+    select.innerHTML = `<option value="">${esc(emptyLabel)}</option>` + rows.map(c => `<option value="${c.id}">${esc(c.name)}${c.locality_name ? ` — ${esc(c.locality_name)}` : ''} — ${chapterTypeLabel(c.chapter_type)}</option>`).join('');
     select.disabled = !regionId;
     if (selected && [...select.options].some(o => o.value === selected)) select.value = selected;
   }
-  function populateMemberChapterSelect(regionId, selected='') { populateChapterSelect($('#member-chapter-select'), regionId, selected, 'No chapter / regional only'); }
-  function populateGalleryChapterSelect(regionId, selected='') { populateChapterSelect($('#gallery-chapter-select'), regionId, selected, regionId ? 'Regional gallery / no chapter' : 'Choose a region first'); }
-  function populatePosterChapterSelect(regionId, selected='') { populateChapterSelect($('#poster-chapter-select'), regionId, selected, regionId ? 'Regional level / no chapter' : 'Choose a region first'); }
-  function populateAdminMemberChapterFilter(regionId, selected='') {
+  function populateMemberChapterSelect(regionId, selected='', localityCode='') { populateChapterSelect($('#member-chapter-select'), regionId, selected, 'Select chapter', localityCode); }
+  function populateGalleryChapterSelect(regionId, selected='', localityCode='') { populateChapterSelect($('#gallery-chapter-select'), regionId, selected, regionId ? 'Regional gallery / no chapter' : 'Choose a region first', localityCode); }
+  function populatePosterChapterSelect(regionId, selected='', localityCode='') { populateChapterSelect($('#poster-chapter-select'), regionId, selected, regionId ? 'Regional level / no chapter' : 'Choose a region first', localityCode); }
+  function populateAdminMemberChapterFilter(regionId, selected='', localityCode='') {
     const select = $('#admin-member-chapter-filter'); if (!select) return;
-    const rows = chapters.filter(c => (!regionId || c.region_id === regionId) && c.active);
-    select.innerHTML = '<option value="">All Chapters</option><option value="__regional__">Regional / No Chapter</option>' + rows.map(c => `<option value="${c.id}">${esc(c.name)} — ${chapterTypeLabel(c.chapter_type)}</option>`).join('');
+    const rows = chapters.filter(c => (!regionId || c.region_id === regionId) && c.active && (!localityCode || !c.locality_code || c.locality_code === localityCode));
+    select.innerHTML = '<option value="">All Chapters</option><option value="__regional__">Regional / No Chapter</option>' + rows.map(c => `<option value="${c.id}">${esc(c.name)}${c.locality_name ? ` — ${esc(c.locality_name)}` : ''} — ${chapterTypeLabel(c.chapter_type)}</option>`).join('');
     if (selected && [...select.options].some(o => o.value === selected)) select.value = selected;
   }
   function validateChapterRegion(regionId, chapterId) {
@@ -207,21 +282,21 @@
   }
 
   async function loadGallery() {
-    let q = db.from('gallery').select('*,regions(code,name),chapters(name,chapter_type)').order('created_at', { ascending: false }).limit(100);
+    let q = db.from('gallery').select('*,regions(code,name),chapters(id,name,chapter_type,locality_code,locality_name,locality_type)').order('created_at', { ascending: false }).limit(100);
     if (profile.role === 'regional_admin') q = q.eq('region_id', profile.region_id);
     const { data, error } = await q;
     if (error) throw error;
     galleryCache = data || [];
-    $('#gallery-list').innerHTML = galleryCache.map(r => `<article class="record-card"><div class="record-image-wrap"><img src="${esc(safeUrl(r.image_url))}" alt="${esc(r.caption || r.album_name)}"></div><div class="record-card-body"><strong>${esc(r.album_name)}</strong><small>${esc(r.regions?.code || 'National')}${r.chapters?.name ? ` • ${esc(r.chapters.name)}` : ''} • ${fmtDate(r.event_date || r.created_at)} • ${r.published ? 'Published' : 'Draft'}</small>${r.caption ? `<p>${esc(r.caption)}</p>`:''}${recordActions('gallery',r.id)}</div></article>`).join('') || '<p>No gallery photos yet.</p>';
+    $('#gallery-list').innerHTML = galleryCache.map(r => `<article class="record-card"><div class="record-image-wrap"><img src="${esc(safeUrl(r.image_url))}" alt="${esc(r.caption || r.album_name)}"></div><div class="record-card-body"><strong>${esc(r.album_name)}</strong><small>${esc(r.regions?.code || 'National')}${r.chapters?.name ? ` • ${esc(r.chapters.name)}${r.chapters?.locality_name ? ` (${esc(r.chapters.locality_name)})` : ''}` : ''} • ${fmtDate(r.event_date || r.created_at)} • ${r.published ? 'Published' : 'Draft'}</small>${r.caption ? `<p>${esc(r.caption)}</p>`:''}${recordActions('gallery',r.id)}</div></article>`).join('') || '<p>No gallery photos yet.</p>';
   }
 
   async function loadPosters() {
-    let q = db.from('regional_posters').select('*,regions(code,name),chapters(name,chapter_type)').order('created_at', { ascending: false });
+    let q = db.from('regional_posters').select('*,regions(code,name),chapters(id,name,chapter_type,locality_code,locality_name,locality_type)').order('created_at', { ascending: false });
     if (profile.role === 'regional_admin') q = q.eq('region_id', profile.region_id);
     const { data, error } = await q;
     if (error) throw error;
     posterCache = data || [];
-    $('#region-poster-list').innerHTML = posterCache.map(r => `<article class="record-card"><div class="record-image-wrap poster"><img src="${esc(safeUrl(r.image_url))}" alt="${esc(r.person_name)} regional poster"></div><div class="record-card-body"><strong>${esc(r.person_name || r.title)}</strong><small>${esc(r.position || '')} • ${esc(r.regions?.code || '')}${r.chapters?.name ? ` • ${esc(r.chapters.name)}` : ' • Regional'} • ${r.published ? 'Published' : 'Draft'}</small>${r.caption ? `<p>${esc(r.caption)}</p>`:''}${recordActions('poster',r.id)}</div></article>`).join('') || '<p>No regional posters yet.</p>';
+    $('#region-poster-list').innerHTML = posterCache.map(r => `<article class="record-card"><div class="record-image-wrap poster"><img src="${esc(safeUrl(r.image_url))}" alt="${esc(r.person_name)} regional poster"></div><div class="record-card-body"><strong>${esc(r.person_name || r.title)}</strong><small>${esc(r.position || '')} • ${esc(r.regions?.code || '')}${r.chapters?.name ? ` • ${esc(r.chapters.name)}${r.chapters?.locality_name ? ` (${esc(r.chapters.locality_name)})` : ''}` : ' • Regional'} • ${r.published ? 'Published' : 'Draft'}</small>${r.caption ? `<p>${esc(r.caption)}</p>`:''}${recordActions('poster',r.id)}</div></article>`).join('') || '<p>No regional posters yet.</p>';
   }
 
   function memberLeadershipRank(position='') {
@@ -245,10 +320,12 @@
   function renderAdminMembers() {
     const q = ($('#admin-member-search')?.value || '').trim().toLowerCase();
     const regionFilter = $('#admin-member-region-filter')?.value || '';
+    const localityFilter = $('#admin-member-locality-filter')?.value || '';
     const chapterFilter = $('#admin-member-chapter-filter')?.value || '';
     const rows = memberCache.filter(r => {
-      const matchesText = !q || `${r.member_id} ${r.first_name} ${r.middle_name || ''} ${r.last_name} ${r.suffix || ''} ${r.regions?.name || ''} ${r.chapters?.name || ''}`.toLowerCase().includes(q);
+      const matchesText = !q || `${r.member_id} ${r.first_name} ${r.middle_name || ''} ${r.last_name} ${r.suffix || ''} ${r.regions?.name || ''} ${r.locality_name || ''} ${r.chapters?.name || ''}`.toLowerCase().includes(q);
       const matchesRegion = !regionFilter || r.region_id === regionFilter;
+      const matchesLocality = !localityFilter || r.locality_code === localityFilter || r.chapters?.locality_code === localityFilter;
       const matchesChapter = !chapterFilter || (chapterFilter === '__regional__' ? !r.chapter_id : r.chapter_id === chapterFilter);
       return matchesText && matchesRegion && matchesChapter;
     });
@@ -264,7 +341,7 @@
       const regionName = r.regions?.name || r.regions?.code || 'Unassigned Region';
       const chapterName = r.chapters?.name || 'Regional / No Chapter';
       const key = `${r.region_id || 'none'}::${r.chapter_id || 'regional'}`;
-      if (!groups.has(key)) groups.set(key,{regionName,chapterName,chapterType:r.chapters?.chapter_type || '',rows:[]});
+      if (!groups.has(key)) groups.set(key,{regionName,chapterName,chapterType:r.chapters?.chapter_type || '',localityName:r.locality_name || r.chapters?.locality_name || '',rows:[]});
       groups.get(key).rows.push(r);
     }
     target.innerHTML = [...groups.values()].sort((a,b)=>`${a.regionName} ${a.chapterName}`.localeCompare(`${b.regionName} ${b.chapterName}`)).map(g => {
@@ -273,12 +350,12 @@
         const open = `<a class="record-link-btn" href="/member?id=${encodeURIComponent(r.member_id)}" target="_blank" rel="noopener">View</a>`;
         return `<div class="record-row">${r.photo_url ? `<img class="member-list-photo" src="${esc(safeUrl(r.photo_url))}" alt="${esc(fullName)}">` : '<div class="member-list-photo placeholder">No photo</div>'}<div class="grow"><strong>${esc(fullName)}</strong><small>${esc(r.member_id)} • ${r.active ? 'Active' : 'Inactive'} • ${r.public_profile ? 'Public' : 'Private'}</small><small>${memberLeadershipRank(r.position) < 100 ? '<span class="leadership-order-badge">LEADERSHIP</span> ' : ''}${esc(r.position || 'Technical Official')}${r.valid_until ? ` • Valid until ${fmtDate(r.valid_until)}` : ''}</small></div>${recordActions('member',r.id,open)}</div>`;
       }).join('');
-      return `<section class="admin-member-group"><div class="admin-member-group-head"><div><span>${esc(g.regionName)}</span><h3>${esc(g.chapterName)}</h3></div><strong>${g.rows.length} member${g.rows.length===1?'':'s'}</strong></div>${members}</section>`;
+      return `<section class="admin-member-group"><div class="admin-member-group-head"><div><span>${esc(g.regionName)}${g.localityName ? ` • ${esc(g.localityName)}` : ''}</span><h3>${esc(g.chapterName)}</h3></div><strong>${g.rows.length} member${g.rows.length===1?'':'s'}</strong></div>${members}</section>`;
     }).join('');
   }
 
   async function loadMembers() {
-    let q = db.from('members').select('*,regions(code,name),chapters(name,chapter_type)').order('last_name');
+    let q = db.from('members').select('*,regions(code,name),chapters(id,name,chapter_type,locality_code,locality_name,locality_type)').order('last_name');
     if (profile.role === 'regional_admin') q = q.eq('region_id', profile.region_id);
     const { data, error } = await q;
     if (error) throw error;
@@ -343,9 +420,10 @@
     setPreview(kind);
     setEditMode(kind,false);
     msg(form,'');
-    if (kind === 'gallery') populateGalleryChapterSelect(form.elements.region_id?.value || '', '');
-    if (kind === 'region-poster') populatePosterChapterSelect(form.elements.region_id?.value || '', '');
-    if (kind === 'member') { populateMemberChapterSelect(form.elements.region_id?.value || '', ''); if ($('#quick-chapter-panel')) $('#quick-chapter-panel').hidden = true; }
+    if (kind === 'gallery') { const loc=$('#gallery-locality-select'); if(loc){loc.innerHTML='<option value="">Choose a region first</option>';loc.disabled=true;} populateGalleryChapterSelect(form.elements.region_id?.value || '', '', ''); }
+    if (kind === 'region-poster') { const loc=$('#poster-locality-select'); if(loc){loc.innerHTML='<option value="">Choose a region first</option>';loc.disabled=true;} populatePosterChapterSelect(form.elements.region_id?.value || '', '', ''); }
+    if (kind === 'member') { const loc=$('#member-locality-select'); if(loc){loc.innerHTML='<option value="">Select a region first</option>';loc.disabled=true;} populateMemberChapterSelect(form.elements.region_id?.value || '', '',''); if ($('#quick-chapter-panel')) $('#quick-chapter-panel').hidden = true; syncMemberValidity(true); }
+    if (kind === 'chapter') { const loc=$('#chapter-locality-select'); if(loc){loc.innerHTML='<option value="">Select a region first</option>';loc.disabled=true;} }
     if (kind === 'announcement') updateAnnouncementPreview();
   }
   function scrollToForm(kind) {
@@ -359,24 +437,30 @@
     f.elements.title.value = r.title || ''; f.elements.category.value = r.category || ''; f.elements.event_date.value = r.event_date || ''; f.elements.body.value = r.body || ''; f.elements.published.checked = !!r.published;
     setPreview('announcement',r.image_url); setEditMode('announcement',true); updateAnnouncementPreview(); scrollToForm('announcement');
   }
-  function beginGalleryEdit(id) {
+  async function beginGalleryEdit(id) {
     const r = galleryCache.find(x => x.id === id); if (!r) return;
     const f = $('#gallery-form'); resetForm('gallery');
-    f.elements.edit_id.value = r.id; f.elements.existing_image_url.value = r.image_url || ''; f.elements.album_name.value = r.album_name || ''; f.elements.region_id.value = r.region_id || ''; populateGalleryChapterSelect(r.region_id || '', r.chapter_id || ''); f.elements.chapter_id.value = r.chapter_id || ''; f.elements.event_date.value = r.event_date || ''; f.elements.caption.value = r.caption || ''; f.elements.published.checked = !!r.published;
+    f.elements.edit_id.value = r.id; f.elements.existing_image_url.value = r.image_url || ''; f.elements.album_name.value = r.album_name || ''; f.elements.region_id.value = r.region_id || ''; await populateLocalitySelect($('#gallery-locality-select'), r.region_id || '', r.chapters?.locality_code || '', r.chapters?.locality_name || '', true, 'All cities / municipalities'); populateGalleryChapterSelect(r.region_id || '', r.chapter_id || '', r.chapters?.locality_code || ''); f.elements.chapter_id.value = r.chapter_id || ''; f.elements.event_date.value = r.event_date || ''; f.elements.caption.value = r.caption || ''; f.elements.published.checked = !!r.published;
     setPreview('gallery',r.image_url); setEditMode('gallery',true); scrollToForm('gallery');
   }
-  function beginPosterEdit(id) {
+  async function beginPosterEdit(id) {
     const r = posterCache.find(x => x.id === id); if (!r) return;
     const f = $('#region-poster-form'); resetForm('region-poster');
-    f.elements.edit_id.value = r.id; f.elements.existing_image_url.value = r.image_url || ''; f.elements.region_id.value = r.region_id || ''; populatePosterChapterSelect(r.region_id || '', r.chapter_id || ''); f.elements.chapter_id.value = r.chapter_id || ''; f.elements.person_name.value = r.person_name || ''; f.elements.position.value = r.position || ''; f.elements.caption.value = r.caption || ''; f.elements.published.checked = !!r.published;
+    f.elements.edit_id.value = r.id; f.elements.existing_image_url.value = r.image_url || ''; f.elements.region_id.value = r.region_id || ''; await populateLocalitySelect($('#poster-locality-select'), r.region_id || '', r.chapters?.locality_code || '', r.chapters?.locality_name || '', true, 'All cities / municipalities'); populatePosterChapterSelect(r.region_id || '', r.chapter_id || '', r.chapters?.locality_code || ''); f.elements.chapter_id.value = r.chapter_id || ''; f.elements.person_name.value = r.person_name || ''; f.elements.position.value = r.position || ''; f.elements.caption.value = r.caption || ''; f.elements.published.checked = !!r.published;
     setPreview('region-poster',r.image_url); setEditMode('region-poster',true); scrollToForm('region-poster');
   }
-  function beginMemberEdit(id) {
+  async function beginMemberEdit(id) {
     const r = memberCache.find(x => x.id === id); if (!r) return;
     const f = $('#member-form'); resetForm('member');
-    f.elements.edit_id.value = r.id; f.elements.existing_image_url.value = r.photo_url || ''; f.elements.member_id.value = r.member_id || ''; f.elements.region_id.value = r.region_id || ''; populateMemberChapterSelect(r.region_id || '', r.chapter_id || ''); f.elements.chapter_id.value = r.chapter_id || ''; f.elements.first_name.value = r.first_name || ''; f.elements.middle_name.value = r.middle_name || ''; f.elements.last_name.value = r.last_name || ''; f.elements.suffix.value = r.suffix || ''; f.elements.position.value = r.position || ''; f.elements.accreditation_level.value = r.accreditation_level || ''; f.elements.joined_on.value = r.joined_on || ''; f.elements.valid_until.value = r.valid_until || ''; f.elements.active.checked = !!r.active; f.elements.public_profile.checked = !!r.public_profile;
+    f.elements.edit_id.value = r.id; f.elements.existing_image_url.value = r.photo_url || ''; f.elements.member_id.value = r.member_id || '';
+    f.elements.region_id.value = r.region_id || '';
+    await populateLocalitySelect($('#member-locality-select'), r.region_id || '', r.locality_code || r.chapters?.locality_code || '', r.locality_name || r.chapters?.locality_name || '', false);
+    writeLocalityHidden(f,$('#member-locality-select'));
+    populateMemberChapterSelect(r.region_id || '', r.chapter_id || '', $('#member-locality-select')?.value || '');
+    f.elements.chapter_id.value = r.chapter_id || ''; f.elements.first_name.value = r.first_name || ''; f.elements.middle_name.value = r.middle_name || ''; f.elements.last_name.value = r.last_name || ''; f.elements.suffix.value = r.suffix || ''; f.elements.position.value = r.position || ''; f.elements.accreditation_level.value = r.accreditation_level || ''; f.elements.joined_on.value = r.joined_on || todayISO(); syncMemberValidity(false); f.elements.active.checked = !!r.active; f.elements.public_profile.checked = !!r.public_profile;
     setPreview('member',r.photo_url); setEditMode('member',true); scrollToForm('member');
   }
+
 
   function beginRegionEdit(id) {
     const r = regionCache.find(x => x.id === id); if (!r || profile.role !== 'master_admin') return;
@@ -384,12 +468,16 @@
     f.elements.edit_id.value = r.id; f.elements.code.value = r.code || ''; f.elements.name.value = r.name || ''; f.elements.sort_order.value = r.sort_order ?? 999; f.elements.active.checked = !!r.active;
     setEditMode('region',true); scrollToForm('region');
   }
-  function beginChapterEdit(id) {
+  async function beginChapterEdit(id) {
     const r = chapterCache.find(x => x.id === id); if (!r) return;
     const f = $('#chapter-form'); resetForm('chapter');
-    f.elements.edit_id.value = r.id; f.elements.region_id.value = r.region_id || ''; f.elements.name.value = r.name || ''; f.elements.chapter_type.value = r.chapter_type || 'chapter'; f.elements.active.checked = !!r.active;
+    f.elements.edit_id.value = r.id; f.elements.region_id.value = r.region_id || '';
+    await populateLocalitySelect($('#chapter-locality-select'), r.region_id || '', r.locality_code || '', r.locality_name || '', true);
+    writeLocalityHidden(f,$('#chapter-locality-select'));
+    f.elements.name.value = r.name || ''; f.elements.chapter_type.value = r.chapter_type || 'chapter'; f.elements.active.checked = !!r.active;
     setEditMode('chapter',true); scrollToForm('chapter');
   }
+
 
   function updateAnnouncementPreview() {
     const text = $('#announcement-body')?.value || '';
@@ -417,24 +505,42 @@
 
   function bindForms() {
     $('#admin-member-search')?.addEventListener('input', renderAdminMembers);
-    $('#admin-member-region-filter')?.addEventListener('change', e => { populateAdminMemberChapterFilter(e.target.value,''); renderAdminMembers(); });
+    $('#admin-member-region-filter')?.addEventListener('change', async e => { await populateLocalitySelect($('#admin-member-locality-filter'), e.target.value, '', '', true, 'All Cities / Municipalities'); populateAdminMemberChapterFilter(e.target.value,'',$('#admin-member-locality-filter')?.value || ''); renderAdminMembers(); });
+    $('#admin-member-locality-filter')?.addEventListener('change', e => { populateAdminMemberChapterFilter($('#admin-member-region-filter')?.value || '','',e.target.value); renderAdminMembers(); });
     $('#admin-member-chapter-filter')?.addEventListener('change', renderAdminMembers);
     $('#admin-region-search')?.addEventListener('input', renderRegionsAdmin);
     $('#admin-chapter-search')?.addEventListener('input', renderChaptersAdmin);
-    $('#member-region-select')?.addEventListener('change', e => { populateMemberChapterSelect(e.target.value,''); if ($('#quick-chapter-panel')) $('#quick-chapter-panel').hidden = true; });
-    $('#gallery-region-select')?.addEventListener('change', e => populateGalleryChapterSelect(e.target.value,''));
-    $('#poster-region-select')?.addEventListener('change', e => populatePosterChapterSelect(e.target.value,''));
+    $('#member-region-select')?.addEventListener('change', async e => {
+      await populateLocalitySelect($('#member-locality-select'),e.target.value,'','',false);
+      writeLocalityHidden($('#member-form'),$('#member-locality-select'));
+      populateMemberChapterSelect(e.target.value,'',$('#member-locality-select')?.value || '');
+      if ($('#quick-chapter-panel')) $('#quick-chapter-panel').hidden = true;
+    });
+    $('#member-locality-select')?.addEventListener('change', e => {
+      writeLocalityHidden($('#member-form'),e.target); populateMemberChapterSelect($('#member-region-select')?.value || '','',e.target.value);
+      const meta=localityMeta(e.target); if($('#quick-chapter-locality-display')) $('#quick-chapter-locality-display').value=meta.name ? `${meta.name}${meta.type ? ` — ${meta.type}` : ''}` : '';
+    });
+    $('#chapter-region-select')?.addEventListener('change', async e => { await populateLocalitySelect($('#chapter-locality-select'),e.target.value,'','',true); writeLocalityHidden($('#chapter-form'),$('#chapter-locality-select')); });
+    $('#chapter-locality-select')?.addEventListener('change', e => writeLocalityHidden($('#chapter-form'),e.target));
+    $('#member-form input[name="joined_on"]')?.addEventListener('change',()=>syncMemberValidity(false));
+    $('#gallery-region-select')?.addEventListener('change', async e => { await populateLocalitySelect($('#gallery-locality-select'), e.target.value, '', '', true, 'All cities / municipalities'); populateGalleryChapterSelect(e.target.value,'',''); });
+    $('#poster-region-select')?.addEventListener('change', async e => { await populateLocalitySelect($('#poster-locality-select'), e.target.value, '', '', true, 'All cities / municipalities'); populatePosterChapterSelect(e.target.value,'',''); });
+    $('#gallery-locality-select')?.addEventListener('change', e => populateGalleryChapterSelect($('#gallery-region-select')?.value || '', '', e.target.value));
+    $('#poster-locality-select')?.addEventListener('change', e => populatePosterChapterSelect($('#poster-region-select')?.value || '', '', e.target.value));
     ['announcement','gallery','region-poster','member'].forEach(bindImageInput);
     $$('[data-cancel]').forEach(b => b.addEventListener('click', () => resetForm(b.dataset.cancel)));
     $('#announcement-body')?.addEventListener('input', updateAnnouncementPreview);
     $$('.format-toolbar button[data-format]').forEach(b => b.addEventListener('click', () => applyFormat($('#announcement-body'),b.dataset.format)));
     updateAnnouncementPreview();
+    syncMemberValidity(true);
 
     $('#quick-add-chapter-toggle')?.addEventListener('click', () => {
       const regionId = $('#member-region-select')?.value || '';
       const panel = $('#quick-chapter-panel');
       const message = $('#quick-chapter-message');
       if (!regionId) { if (message) { message.textContent = 'Select a region first.'; message.className = 'form-message form-error'; } panel.hidden = false; return; }
+      const loc=localityMeta($('#member-locality-select')); if(!loc.code){ if(message){message.textContent='Select a city or municipality first.';message.className='form-message form-error';} panel.hidden=false; return;}
+      if($('#quick-chapter-locality-display')) $('#quick-chapter-locality-display').value=`${loc.name}${loc.type ? ` — ${loc.type}` : ''}`;
       panel.hidden = !panel.hidden;
       if (!panel.hidden) $('#quick-chapter-name')?.focus();
     });
@@ -446,13 +552,14 @@
       const message = $('#quick-chapter-message');
       try {
         if (!regionId) throw new Error('Select a region first.');
+        const loc=localityMeta($('#member-locality-select')); if(!loc.code) throw new Error('Select a city or municipality first.');
         if (!canManageRegion(regionId)) throw new Error('You cannot create chapters for this region.');
         if (!name) throw new Error('Enter the chapter name.');
         if (message) { message.textContent = 'Saving chapter…'; message.className = 'form-message'; }
-        const { data, error } = await db.from('chapters').insert({region_id:regionId,name,chapter_type:type,active:true}).select('id').single();
+        const { data, error } = await db.from('chapters').insert({region_id:regionId,name,chapter_type:type,locality_code:loc.code,locality_name:loc.name,locality_type:loc.type,active:true}).select('id').single();
         if (error) throw error;
         await loadChapters();
-        populateMemberChapterSelect(regionId,data.id);
+        populateMemberChapterSelect(regionId,data.id,$('#member-locality-select')?.value || '');
         $('#member-chapter-select').value = data.id;
         $('#quick-chapter-name').value = '';
         if (message) { message.textContent = 'Chapter saved and selected for this member.'; message.className = 'form-message form-success'; }
@@ -477,7 +584,8 @@
       try {
         const fd = new FormData(f); const regionId = fd.get('region_id');
         if (!canManageRegion(regionId)) throw new Error('You cannot manage chapters for this region.');
-        const payload = { region_id:regionId, name:String(fd.get('name')||'').trim(), chapter_type:fd.get('chapter_type')||'chapter', active:fd.get('active')==='on' };
+        const loc=localityMeta($('#chapter-locality-select')); writeLocalityHidden(f,$('#chapter-locality-select'));
+        const payload = { region_id:regionId, name:String(fd.get('name')||'').trim(), chapter_type:fd.get('chapter_type')||'chapter', locality_code:loc.code||null, locality_name:loc.name||null, locality_type:loc.type||null, active:fd.get('active')==='on' };
         if (!payload.name) throw new Error('Chapter name is required.');
         const { error } = editing ? await db.from('chapters').update(payload).eq('id',fd.get('edit_id')) : await db.from('chapters').insert(payload);
         if (error) throw error; resetForm('chapter'); msg(f,editing?'Chapter updated. Public directory refreshed.':'Chapter saved. It will appear under its region on the public directory when active.'); await refreshNonBlocking();
@@ -530,10 +638,13 @@
       e.preventDefault(); const f = e.currentTarget; const editing = !!f.elements.edit_id.value; msg(f,editing?'Updating…':'Saving…');
       try {
         const fd = new FormData(f); const regionId = fd.get('region_id'); const chapterId = fd.get('chapter_id') || null; if (!canManageRegion(regionId)) throw new Error('You cannot manage this region.');
+        const loc=localityMeta($('#member-locality-select')); if(!loc.code) throw new Error('Select a city or municipality for this member.');
         if (!chapterId) throw new Error('Select a chapter for this member, or use + Add Chapter to create one first.');
         validateChapterRegion(regionId, chapterId);
+        const chapter=chapters.find(c=>c.id===chapterId); if(chapter?.locality_code && chapter.locality_code!==loc.code) throw new Error('The selected chapter belongs to a different city or municipality.');
         let image = fd.get('existing_image_url') || null; const file = fd.get('image'); if (file?.size) image = await upload(file,'member-photos');
-        const payload = { member_id:fd.get('member_id').trim(),region_id:regionId,chapter_id:chapterId,first_name:fd.get('first_name').trim(),middle_name:fd.get('middle_name')||null,last_name:fd.get('last_name').trim(),suffix:fd.get('suffix')||null,position:fd.get('position')||null,accreditation_level:fd.get('accreditation_level')||null,joined_on:fd.get('joined_on')||null,valid_until:fd.get('valid_until')||null,photo_url:image,active:fd.get('active')==='on',public_profile:fd.get('public_profile')==='on' };
+        const joined=fd.get('joined_on')||todayISO(); const valid=plusTwoYearsISO(joined);
+        const payload = { member_id:fd.get('member_id').trim(),region_id:regionId,chapter_id:chapterId,locality_code:loc.code,locality_name:loc.name,locality_type:loc.type,first_name:fd.get('first_name').trim(),middle_name:fd.get('middle_name')||null,last_name:fd.get('last_name').trim(),suffix:fd.get('suffix')||null,position:fd.get('position')||null,accreditation_level:fd.get('accreditation_level')||null,joined_on:joined,valid_until:valid,photo_url:image,active:fd.get('active')==='on',public_profile:fd.get('public_profile')==='on' };
         const { error } = editing ? await db.from('members').update(payload).eq('id',fd.get('edit_id')) : await db.from('members').insert({...payload,created_by:profile.id});
         if (error) throw error; resetForm('member'); msg(f,editing?'Member updated.':'Member saved.'); await refreshNonBlocking();
       } catch (err) { msg(f,friendly(err),false); }

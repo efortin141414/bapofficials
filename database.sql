@@ -65,6 +65,9 @@ create table if not exists public.chapters (
   region_id uuid not null references public.regions(id) on delete cascade,
   name text not null,
   chapter_type text default 'chapter',
+  locality_code text,
+  locality_name text,
+  locality_type text,
   active boolean not null default true,
   created_at timestamptz not null default now(),
   unique(region_id,name)
@@ -126,6 +129,9 @@ create table if not exists public.members (
   suffix text,
   region_id uuid not null references public.regions(id) on delete restrict,
   chapter_id uuid references public.chapters(id) on delete set null,
+  locality_code text,
+  locality_name text,
+  locality_type text,
   position text,
   accreditation_level text,
   photo_url text,
@@ -137,6 +143,33 @@ create table if not exists public.members (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+
+-- City / Municipality compatibility for projects upgraded from earlier versions.
+alter table public.chapters add column if not exists locality_code text;
+alter table public.chapters add column if not exists locality_name text;
+alter table public.chapters add column if not exists locality_type text;
+alter table public.members add column if not exists locality_code text;
+alter table public.members add column if not exists locality_name text;
+alter table public.members add column if not exists locality_type text;
+create index if not exists chapters_region_locality_idx on public.chapters(region_id, locality_code);
+create index if not exists members_region_locality_chapter_idx on public.members(region_id, locality_code, chapter_id);
+
+-- Every member validity automatically follows Date Joined + 2 calendar years.
+create or replace function public.set_member_two_year_validity()
+returns trigger language plpgsql set search_path=public as $$
+begin
+  if new.joined_on is null then new.joined_on := current_date; end if;
+  if tg_op = 'INSERT' or new.joined_on is distinct from old.joined_on or new.valid_until is null then
+    new.valid_until := (new.joined_on + interval '2 years')::date;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists trg_member_two_year_validity on public.members;
+create trigger trg_member_two_year_validity
+before insert or update on public.members
+for each row execute function public.set_member_two_year_validity();
 
 
 -- Ensure a selected chapter always belongs to the selected region.

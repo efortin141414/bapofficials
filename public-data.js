@@ -76,7 +76,7 @@
     if (!target) return;
     const [regionsRes, chaptersRes, galleryRes, postersRes, memberCountRes] = await Promise.all([
       db.from('regions').select('id,code,name,sort_order').eq('active',true).order('sort_order').order('name'),
-      db.from('chapters').select('id,region_id,name,chapter_type').eq('active',true).order('name'),
+      db.from('chapters').select('id,region_id,name,chapter_type,locality_code,locality_name,locality_type').eq('active',true).order('name'),
       db.from('gallery').select('id,album_name,caption,region_id,chapter_id,event_date,image_url,created_at').eq('published',true).order('event_date',{ascending:false}),
       db.from('regional_posters').select('id,title,person_name,position,caption,region_id,chapter_id,image_url,created_at').eq('published',true).order('created_at',{ascending:false}),
       db.from('members').select('id,region_id,chapter_id').eq('active',true).eq('public_profile',true)
@@ -100,15 +100,15 @@
       const groups = ['provincial','city','municipal','area','chapter'].map(type => {
         const items = rs.filter(c => (c.chapter_type || 'chapter') === type);
         if (!items.length) return '';
-        return `<p class="subchapter-label">${chapterGroupLabel(type)}</p><div class="subchapter-chips">${items.map(c=>`<span class="subchapter-entry"><a class="subchapter-chip" href="#chapter-${esc(c.id)}">${esc(c.name)}</a><button type="button" class="chapter-member-jump" data-member-region="${esc(r.id)}" data-member-chapter="${esc(c.id)}">${memberCounts.get(c.id)||0} member${(memberCounts.get(c.id)||0)===1?'':'s'}</button></span>`).join('')}</div>`;
+        return `<p class="subchapter-label">${chapterGroupLabel(type)}</p><div class="subchapter-chips">${items.map(c=>`<span class="subchapter-entry"><a class="subchapter-chip" href="/chapter?id=${encodeURIComponent(c.id)}">${esc(c.name)}${c.locality_name ? ` <small>${esc(c.locality_name)}</small>` : ''}</a><a class="chapter-member-jump" href="/chapter?id=${encodeURIComponent(c.id)}#members">${memberCounts.get(c.id)||0} member${(memberCounts.get(c.id)||0)===1?'':'s'}</a></span>`).join('')}</div>`;
       }).join('');
       const regionMedia = media.filter(m => m.region_id === r.id && !m.chapter_id);
       const chapterGalleries = rs.map(c => {
         const cm = media.filter(m => m.chapter_id === c.id);
         if (!cm.length) return '';
-        return `<section class="chapter-gallery-block" id="chapter-${esc(c.id)}"><div class="chapter-gallery-heading"><div><span>${esc(chapterGroupLabel(c.chapter_type).replace(' Chapters',''))}</span><h4>${esc(c.name)} Gallery</h4></div><strong>${cm.length}</strong></div><div class="directory-media-grid">${cm.map(directoryMediaCard).join('')}</div></section>`;
+        return `<section class="chapter-gallery-block" id="chapter-${esc(c.id)}"><div class="chapter-gallery-heading"><div><span>${esc(chapterGroupLabel(c.chapter_type).replace(' Chapters',''))}${c.locality_name ? ` • ${esc(c.locality_name)}` : ''}</span><h4>${esc(c.name)} Gallery</h4></div><div class="chapter-gallery-actions"><strong>${cm.length}</strong><a href="/chapter?id=${encodeURIComponent(c.id)}#gallery">Open Chapter Page</a></div></div><div class="directory-media-grid">${cm.slice(0,6).map(directoryMediaCard).join('')}</div></section>`;
       }).join('');
-      const search = [r.code,r.name,...rs.map(c=>c.name)].join(' ').toLowerCase();
+      const search = [r.code,r.name,...rs.flatMap(c=>[c.name,c.locality_name||''])].join(' ').toLowerCase();
       return `<article class="region-directory-card" data-region="${esc(search)}">
         <button aria-expanded="false" class="region-directory-head" type="button">
           <span class="region-code">${esc(r.code)}</span>
@@ -134,7 +134,7 @@
     const select = document.getElementById('member-chapter-filter');
     if (!select) return;
     const rows = publicMemberChapters.filter(c => !regionId || c.region_id === regionId);
-    select.innerHTML = '<option value="">All Chapters</option>' + rows.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    select.innerHTML = '<option value="">All Chapters</option>' + rows.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}${c.locality_name ? ` — ${esc(c.locality_name)}` : ''}</option>`).join('');
     if (selected && [...select.options].some(o=>o.value===selected)) select.value = selected;
   }
 
@@ -157,9 +157,10 @@
   }
 
   function memberCard(m) {
+    const location=m.locality_name || m.chapters?.locality_name || '';
     return `<article class="member-card">
-      <img src="${esc(safeUrl(m.photo_url) || placeholder)}" alt="Member photo" loading="lazy">
-      <div class="dynamic-card-body"><div class="member-badge-row"><span class="status-badge">✓ ACTIVE</span>${memberLeadershipRank(m.position) < 100 ? '<span class="leadership-order-badge">LEADERSHIP</span>' : ''}</div><h3>${esc([m.first_name,m.middle_name,m.last_name,m.suffix].filter(Boolean).join(' '))}</h3><div class="member-id">${esc(m.member_id)}</div><p>${esc(m.position || 'Technical Official')}<br>${esc(m.regions?.name || '')}${m.chapters?.name ? `<br><strong>${esc(m.chapters.name)}</strong>` : ''}</p><a href="/member?id=${encodeURIComponent(m.member_id)}">View verification profile</a></div>
+      <div class="passport-photo-frame"><img src="${esc(safeUrl(m.photo_url) || placeholder)}" alt="Member photo" loading="lazy"></div>
+      <div class="dynamic-card-body"><div class="member-badge-row"><span class="status-badge">✓ ACTIVE</span>${memberLeadershipRank(m.position) < 100 ? '<span class="leadership-order-badge">LEADERSHIP</span>' : ''}</div><h3>${esc([m.first_name,m.middle_name,m.last_name,m.suffix].filter(Boolean).join(' '))}</h3><div class="member-id">${esc(m.member_id)}</div><p>${esc(m.position || 'Technical Official')}<br>${esc(m.regions?.name || '')}${location ? `<br>${esc(location)}` : ''}${m.chapters?.name ? `<br><strong>${esc(m.chapters.name)}</strong>` : ''}</p><a href="/member?id=${encodeURIComponent(m.member_id)}">View verification profile</a></div>
     </article>`;
   }
 
@@ -169,7 +170,7 @@
     const q = (document.getElementById('member-search')?.value || '').trim().toLowerCase();
     const region = document.getElementById('member-region-filter')?.value || '';
     const chapter = document.getElementById('member-chapter-filter')?.value || '';
-    const rows = allMembers.filter(m => (!region || m.region_id === region) && (!chapter || m.chapter_id === chapter) && (!q || `${m.member_id} ${m.first_name} ${m.middle_name||''} ${m.last_name} ${m.suffix||''} ${m.chapters?.name||''}`.toLowerCase().includes(q)));
+    const rows = allMembers.filter(m => (!region || m.region_id === region) && (!chapter || m.chapter_id === chapter) && (!q || `${m.member_id} ${m.first_name} ${m.middle_name||''} ${m.last_name} ${m.suffix||''} ${m.locality_name||''} ${m.chapters?.locality_name||''} ${m.chapters?.name||''}`.toLowerCase().includes(q)));
     const summary = document.getElementById('member-directory-summary');
     const chapterCount = new Set(rows.map(m=>m.chapter_id).filter(Boolean)).size;
     if (summary) summary.innerHTML = `<strong>${rows.length}</strong> verified member${rows.length===1?'':'s'} • <strong>${chapterCount}</strong> chapter${chapterCount===1?'':'s'} shown`;
@@ -180,11 +181,11 @@
       const regionCode = m.regions?.code || '';
       const chapterName = m.chapters?.name || 'Regional / No Chapter';
       const key = `${m.region_id || 'none'}::${m.chapter_id || 'regional'}`;
-      if (!groups.has(key)) groups.set(key,{regionName,regionCode,chapterName,rows:[]});
+      if (!groups.has(key)) groups.set(key,{regionName,regionCode,chapterName,chapterId:m.chapter_id||'',localityName:m.locality_name||m.chapters?.locality_name||'',rows:[]});
       groups.get(key).rows.push(m);
     }
     target.innerHTML = [...groups.values()].sort((a,b)=>`${a.regionName} ${a.chapterName}`.localeCompare(`${b.regionName} ${b.chapterName}`)).map(g => `<section class="public-member-group">
-      <div class="public-member-group-head"><div><span>${esc(g.regionCode)} • ${esc(g.regionName)}</span><h3>${esc(g.chapterName)}</h3></div><strong>${g.rows.length} member${g.rows.length===1?'':'s'}</strong></div>
+      <div class="public-member-group-head"><div><span>${esc(g.regionCode)} • ${esc(g.regionName)}${g.localityName ? ` • ${esc(g.localityName)}` : ''}</span><h3>${esc(g.chapterName)}</h3></div><div class="member-group-actions"><strong>${g.rows.length} member${g.rows.length===1?'':'s'}</strong>${g.chapterId ? `<a href="/chapter?id=${encodeURIComponent(g.chapterId)}">Chapter Page & Gallery →</a>` : ''}</div></div>
       <div class="member-grid">${g.rows.sort(memberDirectorySort).map(memberCard).join('')}</div>
     </section>`).join('');
   }
@@ -193,9 +194,9 @@
     const target = document.getElementById('dynamic-members');
     if (!target) return;
     const [membersRes, regionsRes, chaptersRes] = await Promise.all([
-      db.from('members').select('id,member_id,first_name,middle_name,last_name,suffix,position,photo_url,region_id,chapter_id,regions(code,name),chapters(id,name,chapter_type)').eq('active',true).eq('public_profile',true).order('last_name'),
+      db.from('members').select('id,member_id,first_name,middle_name,last_name,suffix,position,photo_url,region_id,chapter_id,locality_code,locality_name,locality_type,regions(code,name),chapters(id,name,chapter_type,locality_code,locality_name,locality_type)').eq('active',true).eq('public_profile',true).order('last_name'),
       db.from('regions').select('id,code,name').eq('active',true).order('sort_order'),
-      db.from('chapters').select('id,region_id,name,chapter_type').eq('active',true).order('name')
+      db.from('chapters').select('id,region_id,name,chapter_type,locality_code,locality_name,locality_type').eq('active',true).order('name')
     ]);
     if (membersRes.error) throw membersRes.error;
     if (regionsRes.error) throw regionsRes.error;
@@ -213,7 +214,7 @@
 
   document.addEventListener('click', e => {
     const btn = e.target.closest('.chapter-member-jump');
-    if (!btn) return;
+    if (!btn || btn.tagName === 'A') return;
     const regionId = btn.dataset.memberRegion || '';
     const chapterId = btn.dataset.memberChapter || '';
     const regionSelect = document.getElementById('member-region-filter');

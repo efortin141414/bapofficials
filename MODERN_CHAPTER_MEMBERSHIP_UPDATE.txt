@@ -1,0 +1,86 @@
+BAPTO MODERN CHAPTER + MEMBERSHIP UPDATE
+========================================
+
+WHAT THIS UPDATE ADDS
+---------------------
+1. Passport-size member photos on the public website and member verification page.
+   - Display ratio: 35:45 (7:9)
+   - Photos are cropped cleanly with the face area kept toward the top.
+
+2. City / Municipality dropdowns in Master Admin.
+   - Add/Edit Chapter: Region -> City/Municipality -> Chapter
+   - Add/Edit Member: Region -> City/Municipality -> Chapter
+   - Gallery: Region -> City/Municipality filter -> Chapter
+   - Region/Chapter Poster: Region -> City/Municipality filter -> Chapter
+   - Membership admin filter: Region -> City/Municipality -> Chapter
+
+3. Automatic 2-year member validity.
+   - Date Joined defaults to today for a new member.
+   - Valid Until is automatically Date Joined + 2 years.
+   - The Supabase trigger also enforces the 2-year calculation.
+
+4. Modern Chapter subpage.
+   - New route: /chapter?id=CHAPTER_UUID
+   - Shows Region, City/Municipality and Chapter information.
+   - Commissioners/Directors appear first.
+   - Regular members follow alphabetically.
+   - Member photos display in passport ratio.
+   - One combined Chapter Gallery shows both Chapter Posters and Gallery Photos.
+   - Clicking a gallery image opens a large modern preview.
+
+5. Public Membership + Regional Chapter directory links.
+   - Chapter names and member-count links open the Chapter subpage.
+   - Membership chapter groups include a Chapter Page & Gallery button.
+
+IMPORTANT: RUN SQL FIRST
+------------------------
+1. Open Supabase.
+2. Go to SQL Editor -> New Query.
+3. Paste and run MODERN_CHAPTER_MEMBERSHIP_UPDATE.sql.
+4. Confirm there are no SQL errors.
+
+THEN UPDATE GITHUB / VERCEL
+---------------------------
+Upload/replace the files from this package in the same GitHub repository used by Vercel.
+Important updated/new files include:
+
+- master.html
+- master.js
+- admin.css
+- index.html
+- public-data.js
+- styles.css
+- member.html
+- member.js
+- chapter.html       NEW
+- chapter.css        NEW
+- chapter.js         NEW
+- vercel.json
+- database.sql
+- MODERN_CHAPTER_MEMBERSHIP_UPDATE.sql
+
+Commit the changes. Vercel should redeploy automatically.
+
+HOW TO USE IT
+-------------
+A. Create a Chapter
+   Master -> Regions & Chapters -> Add Chapter
+   Select Region -> City/Municipality -> enter Chapter Name -> Save.
+
+B. Add a Member
+   Master -> Members -> Add Member
+   Select Region -> City/Municipality -> Chapter.
+   Date Joined will automatically calculate Valid Until for 2 years.
+
+C. Add Chapter Gallery Content
+   Master -> Gallery or Region & Chapter Posters
+   Select Region -> City/Municipality -> Chapter -> upload image/poster -> Publish.
+
+D. View the Chapter Page
+   On the public website, open Membership or Regional Chapters and click the Chapter.
+   The page automatically shows members and that chapter's gallery.
+
+LOCATION DROPDOWNS
+------------------
+The Master Admin loads current Philippine city/municipality reference data dynamically.
+If that reference service is temporarily unavailable, existing saved locality information remains in Supabase and can still display on the public site.
