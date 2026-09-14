@@ -17,7 +17,7 @@
   }
 
   async function init(){
-    if(!chapterId){ root.innerHTML='<section class="chapter-error-card"><div><strong>Chapter not specified.</strong>Open this page from Regional and Chapter Leadership or the Membership directory.</div></section>'; return; }
+    if(!chapterId){ root.innerHTML='<section class="chapter-error-card"><div><strong>Chapter not specified.</strong>Open this page from the Regional Chapters or Membership directory.</div></section>'; return; }
     try{
       const db=window.getBaptoSupabase();
       const {data:chapter,error}=await db.from('chapters').select('id,name,chapter_type,locality_code,locality_name,locality_type,region_id,regions(code,name)').eq('id',chapterId).eq('active',true).maybeSingle();
@@ -49,7 +49,7 @@
           <div class="chapter-section-head"><div><h2>Chapter Gallery</h2><p>All published chapter posters and activity photos are displayed here. Member profiles are kept in the Membership Directory.</p></div><span class="chapter-section-badge">${total} Published</span></div>
           ${total?`<div class="chapter-gallery-grid">${posters.map(r=>mediaItem('poster',r)).join('')}${gallery.map(r=>mediaItem('gallery',r)).join('')}</div>`:'<div class="chapter-empty">No published chapter gallery items yet.</div>'}
         </section>
-        <div class="chapter-footer-actions"><a class="primary" href="/#chapters">Browse Regional &amp; Chapter Leadership</a><a class="secondary" href="/#member-directory">Membership Directory</a></div>`;
+        <div class="chapter-footer-actions"><a class="primary" href="/#regional-chapters">Browse Regional Galleries</a><a class="secondary" href="/#member-directory">Membership Directory</a></div>`;
     } catch(err){ console.error(err); root.innerHTML=`<section class="chapter-error-card"><div><strong>Unable to load chapter gallery.</strong>${esc(err.message||'Please try again later.')}</div></section>`; }
   }
 
