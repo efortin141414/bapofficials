@@ -1,0 +1,19 @@
+BAPTO GALLERY-ONLY CHAPTER UPDATE
+
+WHAT CHANGED
+1. Chapter subpages no longer show member cards or member lists.
+2. Clicking a chapter from Regional and Chapter Leadership opens that chapter's Gallery page.
+3. Region sections continue to show the Regional Gallery plus each Chapter Gallery.
+4. Member profiles remain available only in the main Membership Directory and individual verification profile.
+5. Chapter buttons now say "View Gallery" instead of showing a member-count jump.
+
+FILES TO REPLACE IN GITHUB
+- chapter.html
+- chapter.js
+- chapter.css
+- public-data.js
+
+No Supabase SQL update is required.
+
+After committing the files, wait for Vercel to redeploy and test:
+/ -> Regional and Chapter Leadership -> Region -> Chapter -> Gallery

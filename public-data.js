@@ -74,21 +74,17 @@
   async function loadChapterDirectory(db) {
     const target = document.getElementById('regionDirectory');
     if (!target) return;
-    const [regionsRes, chaptersRes, galleryRes, postersRes, memberCountRes] = await Promise.all([
+    const [regionsRes, chaptersRes, galleryRes, postersRes] = await Promise.all([
       db.from('regions').select('id,code,name,sort_order').eq('active',true).order('sort_order').order('name'),
       db.from('chapters').select('id,region_id,name,chapter_type,locality_code,locality_name,locality_type').eq('active',true).order('name'),
       db.from('gallery').select('id,album_name,caption,region_id,chapter_id,event_date,image_url,created_at').eq('published',true).order('event_date',{ascending:false}),
-      db.from('regional_posters').select('id,title,person_name,position,caption,region_id,chapter_id,image_url,created_at').eq('published',true).order('created_at',{ascending:false}),
-      db.from('members').select('id,region_id,chapter_id').eq('active',true).eq('public_profile',true)
+      db.from('regional_posters').select('id,title,person_name,position,caption,region_id,chapter_id,image_url,created_at').eq('published',true).order('created_at',{ascending:false})
     ]);
     if (regionsRes.error) throw regionsRes.error;
     if (chaptersRes.error) throw chaptersRes.error;
     if (galleryRes.error) throw galleryRes.error;
     if (postersRes.error) throw postersRes.error;
-    if (memberCountRes.error) throw memberCountRes.error;
     const regions = regionsRes.data || [], chapters = chaptersRes.data || [];
-    const memberCounts = new Map();
-    for (const m of (memberCountRes.data || [])) if (m.chapter_id) memberCounts.set(m.chapter_id,(memberCounts.get(m.chapter_id)||0)+1);
     const media = [
       ...(galleryRes.data || []).map(x => ({...x,_kind:'gallery'})),
       ...(postersRes.data || []).map(x => ({...x,_kind:'poster'}))
@@ -100,13 +96,13 @@
       const groups = ['provincial','city','municipal','area','chapter'].map(type => {
         const items = rs.filter(c => (c.chapter_type || 'chapter') === type);
         if (!items.length) return '';
-        return `<p class="subchapter-label">${chapterGroupLabel(type)}</p><div class="subchapter-chips">${items.map(c=>`<span class="subchapter-entry"><a class="subchapter-chip" href="/chapter?id=${encodeURIComponent(c.id)}">${esc(c.name)}${c.locality_name ? ` <small>${esc(c.locality_name)}</small>` : ''}</a><a class="chapter-member-jump" href="/chapter?id=${encodeURIComponent(c.id)}#members">${memberCounts.get(c.id)||0} member${(memberCounts.get(c.id)||0)===1?'':'s'}</a></span>`).join('')}</div>`;
+        return `<p class="subchapter-label">${chapterGroupLabel(type)}</p><div class="subchapter-chips">${items.map(c=>`<span class="subchapter-entry"><a class="subchapter-chip" href="/chapter?id=${encodeURIComponent(c.id)}#gallery">${esc(c.name)}${c.locality_name ? ` <small>${esc(c.locality_name)}</small>` : ''}</a><a class="chapter-gallery-jump" href="/chapter?id=${encodeURIComponent(c.id)}#gallery">View Gallery</a></span>`).join('')}</div>`;
       }).join('');
       const regionMedia = media.filter(m => m.region_id === r.id && !m.chapter_id);
       const chapterGalleries = rs.map(c => {
         const cm = media.filter(m => m.chapter_id === c.id);
         if (!cm.length) return '';
-        return `<section class="chapter-gallery-block" id="chapter-${esc(c.id)}"><div class="chapter-gallery-heading"><div><span>${esc(chapterGroupLabel(c.chapter_type).replace(' Chapters',''))}${c.locality_name ? ` • ${esc(c.locality_name)}` : ''}</span><h4>${esc(c.name)} Gallery</h4></div><div class="chapter-gallery-actions"><strong>${cm.length}</strong><a href="/chapter?id=${encodeURIComponent(c.id)}#gallery">Open Chapter Page</a></div></div><div class="directory-media-grid">${cm.slice(0,6).map(directoryMediaCard).join('')}</div></section>`;
+        return `<section class="chapter-gallery-block" id="chapter-${esc(c.id)}"><div class="chapter-gallery-heading"><div><span>${esc(chapterGroupLabel(c.chapter_type).replace(' Chapters',''))}${c.locality_name ? ` • ${esc(c.locality_name)}` : ''}</span><h4>${esc(c.name)} Gallery</h4></div><div class="chapter-gallery-actions"><strong>${cm.length}</strong><a href="/chapter?id=${encodeURIComponent(c.id)}#gallery">Open Gallery</a></div></div><div class="directory-media-grid">${cm.slice(0,6).map(directoryMediaCard).join('')}</div></section>`;
       }).join('');
       const search = [r.code,r.name,...rs.flatMap(c=>[c.name,c.locality_name||''])].join(' ').toLowerCase();
       return `<article class="region-directory-card" data-region="${esc(search)}">
@@ -185,7 +181,7 @@
       groups.get(key).rows.push(m);
     }
     target.innerHTML = [...groups.values()].sort((a,b)=>`${a.regionName} ${a.chapterName}`.localeCompare(`${b.regionName} ${b.chapterName}`)).map(g => `<section class="public-member-group">
-      <div class="public-member-group-head"><div><span>${esc(g.regionCode)} • ${esc(g.regionName)}${g.localityName ? ` • ${esc(g.localityName)}` : ''}</span><h3>${esc(g.chapterName)}</h3></div><div class="member-group-actions"><strong>${g.rows.length} member${g.rows.length===1?'':'s'}</strong>${g.chapterId ? `<a href="/chapter?id=${encodeURIComponent(g.chapterId)}">Chapter Page & Gallery →</a>` : ''}</div></div>
+      <div class="public-member-group-head"><div><span>${esc(g.regionCode)} • ${esc(g.regionName)}${g.localityName ? ` • ${esc(g.localityName)}` : ''}</span><h3>${esc(g.chapterName)}</h3></div><div class="member-group-actions"><strong>${g.rows.length} member${g.rows.length===1?'':'s'}</strong>${g.chapterId ? `<a href="/chapter?id=${encodeURIComponent(g.chapterId)}">Chapter Gallery →</a>` : ''}</div></div>
       <div class="member-grid">${g.rows.sort(memberDirectorySort).map(memberCard).join('')}</div>
     </section>`).join('');
   }

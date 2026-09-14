@@ -1,0 +1,18 @@
+BAPTO REGIONAL AND CHAPTER LEADERSHIP UPDATE
+
+What changed
+- Public navigation: Regional Chapters -> Regional and Chapter Leadership
+- Home quick-access card updated to the same wording
+- Main section heading updated to Regional and Chapter Leadership
+- Section description now emphasizes leadership across regions and chapters
+- Master Admin directory menu updated to Regional & Chapter Leadership
+- Chapter gallery return link updated to the new section name
+
+No Supabase SQL update is required.
+
+Files to replace in GitHub
+- index.html
+- master.html
+- chapter.js
+
+Upload/replace these files, commit the changes, and wait for Vercel to redeploy.

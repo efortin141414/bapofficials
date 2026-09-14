@@ -3,3 +3,8 @@
 @media(max-width:1050px){.chapter-members-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.chapter-gallery-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:780px){.chapter-top-actions a:not(.chapter-home-btn){display:none}.chapter-page-shell{width:min(100% - 18px,1220px);margin-top:12px}.chapter-hero{border-radius:22px;padding:28px 20px 40px}.chapter-stats{grid-template-columns:1fr 1fr 1fr;padding:0 9px}.chapter-stat{padding:14px 11px}.chapter-stat strong{font-size:1.25rem}.chapter-members-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.chapter-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.chapter-section-head{align-items:flex-start;flex-direction:column}.chapter-passport{width:98px;height:126px}.chapter-media-frame{height:190px}}
 @media(max-width:520px){.chapter-brand strong{font-size:.78rem}.chapter-brand small{display:none}.chapter-brand-mark{width:40px;height:40px}.chapter-topbar{padding:10px 12px}.chapter-members-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.chapter-member-card{padding:12px 8px}.chapter-passport{width:91px;height:117px}.chapter-gallery-grid{grid-template-columns:1fr 1fr;gap:10px}.chapter-media-frame{height:160px}.chapter-stats{gap:7px}.chapter-stat span{font-size:.57rem}.chapter-stat strong{font-size:1.05rem}}
+
+/* Gallery-only chapter page: member directory intentionally hidden from chapter subpages. */
+.gallery-only-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+.chapter-gallery-jump{display:inline-flex;align-items:center;justify-content:center;padding:5px 9px;border-radius:999px;background:#eef5ff;color:#0b4487;text-decoration:none;font-size:.62rem;font-weight:900;white-space:nowrap}
+.chapter-gallery-jump:hover{background:#dcecff;color:#062f63}
