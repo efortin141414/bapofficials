@@ -1,0 +1,30 @@
+BAPTO MASTER ADMIN — CITY / MUNICIPALITY DROPDOWN FIX
+
+What changed
+- City / Municipality is now a real dropdown in all relevant Master Admin forms.
+- Selecting a Region automatically loads only the cities and municipalities for that Region.
+- The dropdown is grouped into:
+  • Cities
+  • Municipalities
+- The Member form requires a City / Municipality before choosing a Chapter.
+- The Chapter form stores the selected locality code, name, and type.
+- Gallery and Regional Poster forms can filter chapters by City / Municipality.
+- Membership Directory filter can filter members by City / Municipality.
+- Existing saved locality values are preserved when editing records.
+- Added a second PSGC API fallback and better region-name matching.
+- Added a cache-busting version to master.js so browsers/Vercel do not keep the old dropdown code.
+
+Files to replace in GitHub
+1. master.html
+2. master.js
+
+No Supabase SQL change is required for this fix.
+
+After deployment
+1. Open /master in a private/incognito browser.
+2. Go to Regions & Chapters or Members.
+3. Select a Region.
+4. Wait for the City / Municipality dropdown to load.
+5. You should see Cities and Municipalities grouped separately.
+
+The location list is loaded from the PSGC Cloud Philippine geographic reference API.

@@ -139,38 +139,118 @@
     return ({provincial:'Provincial',city:'City',municipal:'Municipal',area:'Area',chapter:'Local'})[type] || 'Local';
   }
 
+  // Philippine city / municipality dropdown support.
+  // Uses PSGC Cloud v2 first, with v1 fallback, and normalizes region labels
+  // so custom labels such as "Region III", "III", "NCR", or "BARMM" still work.
   const PSGC_REGION_CODE = {
-    'I':'0100000000','II':'0200000000','III':'0300000000','IV-A':'0400000000','V':'0500000000',
-    'VI':'0600000000','VII':'0700000000','VIII':'0800000000','IX':'0900000000','X':'1000000000',
-    'XI':'1100000000','XII':'1200000000','NCR':'1300000000','CAR':'1400000000','XIII':'1600000000',
-    'MIMAROPA':'1700000000','NIR':'1800000000','BARMM':'1900000000'
+    'I':'0100000000','REGION I':'0100000000','ILOCOS REGION':'0100000000',
+    'II':'0200000000','REGION II':'0200000000','CAGAYAN VALLEY':'0200000000',
+    'III':'0300000000','REGION III':'0300000000','CENTRAL LUZON':'0300000000',
+    'IV-A':'0400000000','IVA':'0400000000','REGION IV-A':'0400000000','REGION IVA':'0400000000','CALABARZON':'0400000000',
+    'V':'0500000000','REGION V':'0500000000','BICOL REGION':'0500000000',
+    'VI':'0600000000','REGION VI':'0600000000','WESTERN VISAYAS':'0600000000',
+    'VII':'0700000000','REGION VII':'0700000000','CENTRAL VISAYAS':'0700000000',
+    'VIII':'0800000000','REGION VIII':'0800000000','EASTERN VISAYAS':'0800000000',
+    'IX':'0900000000','REGION IX':'0900000000','ZAMBOANGA PENINSULA':'0900000000',
+    'X':'1000000000','REGION X':'1000000000','NORTHERN MINDANAO':'1000000000',
+    'XI':'1100000000','REGION XI':'1100000000','DAVAO REGION':'1100000000',
+    'XII':'1200000000','REGION XII':'1200000000','SOCCSKSARGEN':'1200000000',
+    'NCR':'1300000000','NATIONAL CAPITAL REGION':'1300000000','NATIONAL CAPITAL REGION NCR':'1300000000',
+    'CAR':'1400000000','CORDILLERA ADMINISTRATIVE REGION':'1400000000','CORDILLERA ADMINISTRATIVE REGION CAR':'1400000000',
+    'XIII':'1600000000','REGION XIII':'1600000000','CARAGA':'1600000000',
+    'MIMAROPA':'1700000000','MIMAROPA REGION':'1700000000','IV-B':'1700000000','IVB':'1700000000','REGION IV-B':'1700000000','REGION IVB':'1700000000',
+    'NIR':'1800000000','NEGROS ISLAND REGION':'1800000000','NEGROS ISLAND REGION NIR':'1800000000',
+    'BARMM':'1900000000','BANGSAMORO AUTONOMOUS REGION IN MUSLIM MINDANAO':'1900000000','BANGSAMORO AUTONOMOUS REGION IN MUSLIM MINDANAO BARMM':'1900000000'
   };
   const localityCache = new Map();
 
   function regionRecord(regionId) { return regions.find(r => r.id === regionId); }
-  function normalizeLocalityItems(payload) {
-    const rows = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
-    return rows.map(x => ({
-      code:String(x.code || x.psgc_code || x.psgc10DigitCode || '').trim(),
-      name:String(x.name || x.area_name || '').trim(),
-      type:String(x.type || x.geographic_level || '').trim() || (/city/i.test(String(x.name||'')) ? 'City' : 'Municipality')
-    })).filter(x => x.code && x.name).sort((a,b)=>a.name.localeCompare(b.name));
+  function normalizeRegionKey(value='') {
+    return String(value)
+      .toUpperCase()
+      .replace(/[()]/g,' ')
+      .replace(/[–—]/g,'-')
+      .replace(/[^A-Z0-9-]+/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
   }
-  async function fetchLocalities(regionId) {
-    if (!regionId) return [];
-    if (localityCache.has(regionId)) return localityCache.get(regionId);
-    const region = regionRecord(regionId);
-    const psgc = PSGC_REGION_CODE[region?.code];
-    if (!psgc) return [];
+  function resolvePsgcRegionCode(region) {
+    if (!region) return '';
+    const codeRaw = String(region.code || '').trim();
+    if (/^\d{10}$/.test(codeRaw)) return codeRaw;
+    const candidates = [region.code, region.name, `${region.code || ''} ${region.name || ''}`]
+      .map(normalizeRegionKey)
+      .filter(Boolean);
+    for (const key of candidates) {
+      if (PSGC_REGION_CODE[key]) return PSGC_REGION_CODE[key];
+      // Extract common Roman-number region tokens from longer custom labels.
+      const roman = key.match(/(?:^|\s)REGION\s+(IV-A|IV-B|XIII|XII|XI|X|IX|VIII|VII|VI|V|III|II|I)(?:\s|$)/)?.[1]
+        || key.match(/^(IV-A|IV-B|XIII|XII|XI|X|IX|VIII|VII|VI|V|III|II|I)$/)?.[1];
+      if (roman && PSGC_REGION_CODE[roman]) return PSGC_REGION_CODE[roman];
+      if (key.includes('NATIONAL CAPITAL') || /\bNCR\b/.test(key)) return '1300000000';
+      if (key.includes('CORDILLERA') || /\bCAR\b/.test(key)) return '1400000000';
+      if (key.includes('MIMAROPA')) return '1700000000';
+      if (key.includes('NEGROS ISLAND') || /\bNIR\b/.test(key)) return '1800000000';
+      if (key.includes('BANGSAMORO') || /\bBARMM\b/.test(key)) return '1900000000';
+    }
+    return '';
+  }
+  function normalizeLocalityItems(payload) {
+    let rows = [];
+    if (Array.isArray(payload)) rows = payload;
+    else if (Array.isArray(payload?.data)) rows = payload.data;
+    else if (Array.isArray(payload?.data?.data)) rows = payload.data.data;
+    else if (Array.isArray(payload?.items)) rows = payload.items;
+    const normalized = rows.map(x => {
+      const rawType = String(x.type || x.geographic_level || x.level || x.status || '').trim();
+      const name = String(x.name || x.area_name || x.city_municipality_name || '').trim();
+      let type = /municip/i.test(rawType) ? 'Municipality' : /city/i.test(rawType) ? 'City' : '';
+      if (!type) type = /\bcity\b/i.test(name) ? 'City' : 'Municipality';
+      return {
+        code:String(x.code || x.psgc_code || x.psgc10DigitCode || x.psgc10_digit_code || '').trim(),
+        name,
+        type
+      };
+    }).filter(x => x.code && x.name);
+    // Deduplicate because fallback endpoints can occasionally overlap.
+    return [...new Map(normalized.map(x => [x.code, x])).values()]
+      .sort((a,b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name));
+  }
+  async function fetchJson(url, timeoutMs=12000) {
     const controller = new AbortController();
-    const timer = setTimeout(()=>controller.abort(),10000);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(`https://psgc.cloud/api/v2/regions/${encodeURIComponent(psgc)}/cities-municipalities`, {signal:controller.signal, headers:{'Accept':'application/json'}});
+      const res = await fetch(url, {signal:controller.signal, headers:{'Accept':'application/json'}});
       if (!res.ok) throw new Error(`Location service returned ${res.status}`);
-      const rows = normalizeLocalityItems(await res.json());
-      localityCache.set(regionId, rows);
-      return rows;
+      return await res.json();
     } finally { clearTimeout(timer); }
+  }
+  async function fetchLocalities(regionId, force=false) {
+    if (!regionId) return [];
+    if (!force && localityCache.has(regionId)) return localityCache.get(regionId);
+    const region = regionRecord(regionId);
+    const psgc = resolvePsgcRegionCode(region);
+    if (!region) throw new Error('The selected region is not available in the region database.');
+
+    const attempts = [];
+    if (psgc) {
+      attempts.push(`https://psgc.cloud/api/v2/regions/${encodeURIComponent(psgc)}/cities-municipalities`);
+      // v1 filtered collection is a fallback if the nested v2 resource is temporarily unavailable.
+      attempts.push(`https://psgc.cloud/api/v1/cities-municipalities?region_code=${encodeURIComponent(psgc)}&per_page=2000`);
+    }
+    if (region.name) attempts.push(`https://psgc.cloud/api/v2/regions/${encodeURIComponent(region.name)}/cities-municipalities`);
+
+    let lastError = null;
+    for (const url of attempts) {
+      try {
+        const rows = normalizeLocalityItems(await fetchJson(url));
+        if (rows.length) {
+          localityCache.set(regionId, rows);
+          return rows;
+        }
+      } catch (err) { lastError = err; }
+    }
+    throw lastError || new Error(`No city/municipality list was returned for ${region.name || region.code || 'the selected region'}.`);
   }
   function localityMeta(select) {
     const o = select?.selectedOptions?.[0];
@@ -182,22 +262,45 @@
     if (form?.elements.locality_type) form.elements.locality_type.value = meta.type;
     return meta;
   }
-  async function populateLocalitySelect(select, regionId, selectedCode='', selectedName='', allowBlank=true, blankLabel='Regional / no city-municipality') {
+  function localityOptionsHtml(rows) {
+    const cities = rows.filter(x => x.type === 'City');
+    const municipalities = rows.filter(x => x.type === 'Municipality');
+    const other = rows.filter(x => !['City','Municipality'].includes(x.type));
+    const opts = group => group.map(x => `<option value="${esc(x.code)}" data-name="${esc(x.name)}" data-type="${esc(x.type)}">${esc(x.name)}</option>`).join('');
+    return [
+      cities.length ? `<optgroup label="Cities (${cities.length})">${opts(cities)}</optgroup>` : '',
+      municipalities.length ? `<optgroup label="Municipalities (${municipalities.length})">${opts(municipalities)}</optgroup>` : '',
+      other.length ? `<optgroup label="Other Localities (${other.length})">${opts(other)}</optgroup>` : ''
+    ].join('');
+  }
+  async function populateLocalitySelect(select, regionId, selectedCode='', selectedName='', allowBlank=true, blankLabel='Regional / no city-municipality', force=false) {
     if (!select) return;
     select.disabled = true;
+    select.setAttribute('aria-busy','true');
     select.innerHTML = `<option value="">${regionId ? 'Loading cities & municipalities…' : 'Select a region first'}</option>`;
-    if (!regionId) return;
+    if (!regionId) { select.removeAttribute('aria-busy'); return; }
     try {
-      const rows = await fetchLocalities(regionId);
+      const rows = await fetchLocalities(regionId, force);
       const blank = allowBlank ? `<option value="">${esc(blankLabel)}</option>` : '<option value="">Select City / Municipality</option>';
-      select.innerHTML = blank + rows.map(x=>`<option value="${esc(x.code)}" data-name="${esc(x.name)}" data-type="${esc(x.type)}">${esc(x.name)} — ${esc(x.type)}</option>`).join('');
-      if (selectedCode && [...select.options].some(o=>o.value===selectedCode)) select.value = selectedCode;
-      else if (selectedName) { const opt=[...select.options].find(o=>(o.dataset.name||'').toLowerCase()===selectedName.toLowerCase()); if(opt) select.value=opt.value; }
+      select.innerHTML = blank + localityOptionsHtml(rows);
+      if (selectedCode && [...select.options].some(o => o.value === selectedCode)) select.value = selectedCode;
+      else if (selectedName) {
+        const needle = selectedName.toLowerCase().trim();
+        const opt = [...select.options].find(o => (o.dataset.name || o.textContent || '').toLowerCase().trim() === needle);
+        if (opt) select.value = opt.value;
+      }
       select.disabled = false;
+      select.removeAttribute('aria-busy');
+      select.dataset.loadedRegion = regionId;
     } catch (err) {
-      console.warn('Could not load PSGC localities',err);
-      select.innerHTML = `<option value="${esc(selectedCode)}" data-name="${esc(selectedName)}" data-type="">${selectedName ? esc(selectedName) : 'Location list unavailable — try again'}</option>`;
+      console.warn('Could not load PSGC cities / municipalities',err);
+      const preserved = selectedName
+        ? `<option value="${esc(selectedCode)}" data-name="${esc(selectedName)}" data-type="">${esc(selectedName)}</option>`
+        : '';
+      select.innerHTML = `${preserved}<option value="" ${preserved ? '' : 'selected'}>Could not load cities / municipalities — choose region again to retry</option>`;
       select.disabled = false;
+      select.removeAttribute('aria-busy');
+      select.dataset.loadedRegion = '';
     }
   }
   function todayISO() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
