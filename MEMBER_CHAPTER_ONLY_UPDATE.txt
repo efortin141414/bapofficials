@@ -1,0 +1,18 @@
+BAPTO MASTER ADMIN — MEMBER MODULE CHAPTER-ONLY UPDATE
+
+What changed
+- Removed Region from Add/Edit Member.
+- City / Municipality remains removed from Add/Edit Member.
+- Member form now asks for Chapter only.
+- The selected Chapter automatically supplies the member's Region and City/Municipality when the member is saved.
+- Removed the inline + Add Chapter tool from the Member form. Create/manage chapters under Regions & Chapters first.
+- Chapter dropdown shows all available chapters grouped by Region for easy selection.
+- Existing Region and Chapter filters in the Membership Directory remain available for admin searching/filtering.
+
+Files to replace in GitHub
+- master.html
+- master.js
+
+No Supabase SQL update is required.
+
+After Vercel redeploys, open /master, go to Members, and hard-refresh/private-browse to avoid cached JS.

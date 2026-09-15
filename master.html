@@ -235,17 +235,10 @@
           <input type="hidden" name="existing_image_url">
           <div class="form-grid">
             <label>Member ID<input name="member_id" required placeholder="NCR-2026-000001"></label>
-            <label>Region<select name="region_id" class="region-select" id="member-region-select" required></select></label>
-            <label>City / Municipality<select name="locality_code" id="member-locality-select" required><option value="">Select a region first</option></select><small class="field-hint">Choose the member’s city or municipality. The Chapter list will narrow to that location.</small></label>
-            <input type="hidden" name="locality_name">
-            <input type="hidden" name="locality_type">
             <div class="form-field chapter-field">
               <label for="member-chapter-select">Chapter</label>
-              <div class="chapter-select-row">
-                <select name="chapter_id" id="member-chapter-select" required><option value="">Select chapter</option></select>
-                <button type="button" class="mini-action-btn" id="quick-add-chapter-toggle">+ Add Chapter</button>
-              </div>
-              <small class="field-hint">Assign every member to a city/municipality and chapter so the public directory can consolidate membership by location and chapter.</small>
+              <select name="chapter_id" id="member-chapter-select" required><option value="">Select chapter</option></select>
+              <small class="field-hint">Select the chapter only. Region and City / Municipality are automatically inherited from the selected chapter.</small>
             </div>
             <label>First Name<input name="first_name" required></label>
             <label>Middle Name<input name="middle_name"></label>
@@ -256,16 +249,6 @@
             <label>Date Joined<input name="joined_on" type="date"><small class="field-hint">Defaults to today for new members.</small></label>
             <label>Valid Until<input name="valid_until" type="date" readonly><small class="field-hint">Automatically set to 2 years from Date Joined.</small></label>
             <label>Member Photo<input name="image" type="file" accept="image/*"><small class="field-hint">Optional. Select a file to add or replace the photo.</small></label>
-          </div>
-          <div class="quick-chapter-panel" id="quick-chapter-panel" hidden>
-            <div class="quick-chapter-head"><div><strong>Create Chapter While Adding Member</strong><small>The new chapter will be saved under the selected region and automatically selected for this member.</small></div><button type="button" class="icon-close-btn" id="quick-add-chapter-close" aria-label="Close">×</button></div>
-            <div class="quick-chapter-grid">
-              <label>City / Municipality<input id="quick-chapter-locality-display" readonly placeholder="Select Region and City / Municipality above"></label>
-              <label>Chapter Name<input id="quick-chapter-name" placeholder="e.g., Quezon City Chapter / Pampanga Officials"></label>
-              <label>Chapter Type<select id="quick-chapter-type"><option value="provincial">Provincial Chapter</option><option value="city">City Chapter</option><option value="municipal">Municipal Chapter</option><option value="area">Area Chapter</option><option value="chapter" selected>Local Chapter</option></select></label>
-              <button type="button" class="primary-save quick-chapter-save" id="quick-add-chapter-save">Save & Select Chapter</button>
-            </div>
-            <span class="form-message" id="quick-chapter-message"></span>
           </div>
           <div class="image-edit-preview member-photo-preview" id="member-preview-wrap" hidden><img id="member-image-preview" alt="Member photo preview"><span>Current / selected member photo</span></div>
           <label class="check"><input name="active" type="checkbox" checked> Active member</label>
@@ -282,7 +265,6 @@
         <div class="member-admin-toolbar">
           <input id="admin-member-search" type="search" placeholder="Search name or Member ID">
           <select id="admin-member-region-filter" class="region-select"><option value="">All Regions</option></select>
-          <select id="admin-member-locality-filter" disabled><option value="">All Cities / Municipalities</option></select>
           <select id="admin-member-chapter-filter"><option value="">All Chapters</option></select>
         </div>
         <div id="admin-member-summary" class="member-summary-bar"></div>
@@ -294,6 +276,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/supabase-config.js?v=20260912-1"></script>
-<script src="/master.js?v=20260915-2"></script>
+<script src="/master.js?v=20260915-3"></script>
 </body>
 </html>
