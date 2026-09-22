@@ -1,1 +1,0 @@
-V6.27 update: replaced the application logo globally with the current BAP Technical Officials logo across navbar, landing page, login/master pages, membership directory, public profile, ID/certificate views, and all generated certificate/logo references. No SQL changes required.
