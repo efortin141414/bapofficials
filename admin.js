@@ -12,7 +12,7 @@
 
   function friendly(err) {
     const m = (err?.message || String(err) || 'Unknown error').trim();
-    if (/invalid login credentials/i.test(m)) return 'Invalid email or password. Reset the password in Supabase Authentication if needed.';
+    if (/invalid login credentials/i.test(m)) return 'Invalid email or password. Use “Forgot password?” to set a new password.';
     if (/email not confirmed/i.test(m)) return 'This Supabase user is not confirmed yet. Confirm it in Authentication → Users.';
     if (/failed to fetch|network|timed out|load failed/i.test(m)) return 'Cannot reach Supabase. Check the project status and internet connection.';
     return m;
@@ -55,6 +55,29 @@
     }
   }
 
+  async function sendResetEmail() {
+    const btn = $('#forgot-password-btn');
+    const email = ($('#login-email')?.value || MASTER_EMAIL).trim();
+    if (!email) {
+      status('Enter your admin email first.', false);
+      return;
+    }
+
+    btn.disabled = true;
+    status('Sending password reset email…');
+    try {
+      db = db || window.getBaptoSupabase();
+      const redirectTo = `${window.location.origin}/reset-password`;
+      const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) throw error;
+      status(`Password reset email requested for ${email}. Check the inbox and spam folder.`, true);
+    } catch (err) {
+      status(friendly(err), false);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   async function boot() {
     try {
       db = window.getBaptoSupabase();
@@ -79,6 +102,7 @@
     if (email && !email.value) email.value = MASTER_EMAIL;
     boot();
     $('#test-connection-btn')?.addEventListener('click', testConnection);
+    $('#forgot-password-btn')?.addEventListener('click', sendResetEmail);
 
     $('#login-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();

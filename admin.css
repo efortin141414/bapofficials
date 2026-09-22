@@ -47,3 +47,5 @@
 
 /* 2026-09-14: Passport member images + locality-aware forms */
 .member-list-photo{width:70px!important;height:90px!important;aspect-ratio:7/9;object-fit:cover;object-position:center top;border-radius:8px!important;border:2px solid #fff;outline:1px solid #d7e0eb;box-shadow:0 5px 14px rgba(4,25,52,.12)}.member-list-photo.placeholder{min-width:70px;display:flex;align-items:center;justify-content:center}.image-edit-preview#member-preview-wrap img{width:126px;height:162px;aspect-ratio:7/9;object-fit:cover;object-position:center top;border-radius:10px}.admin-form select:disabled{background:#eef2f7;color:#8995a7;cursor:not-allowed}.field-hint{display:block;margin-top:5px;color:#7b879a;font-size:.68rem;line-height:1.35}.chapter-select-row{display:flex;gap:8px;align-items:center}.chapter-select-row select{flex:1}.panel-note{line-height:1.45}
+
+.link-button{background:none;border:0;padding:0;margin:2px 0 0;color:#5a3d00;text-decoration:underline;cursor:pointer;font:inherit;text-align:left}.link-button:disabled{opacity:.55;cursor:not-allowed}
