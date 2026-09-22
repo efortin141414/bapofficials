@@ -1,26 +1,126 @@
 {
-  "cleanUrls": true,
-  "trailingSlash": false,
+  "framework": "vite",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/admin",
-      "destination": "/admin.html"
+      "source": "/about",
+      "destination": "/index.html"
     },
     {
-      "source": "/master",
-      "destination": "/master.html"
+      "source": "/membership",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/posters",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/membership-directory",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/blank-membership-form",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/application-form/:id",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/organization",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/executive-dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/payment/:id",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/profile/:identifier",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/register",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/index.html"
     },
     {
       "source": "/member",
-      "destination": "/member.html"
+      "destination": "/index.html"
     },
     {
-      "source": "/announcement",
-      "destination": "/announcement.html"
+      "source": "/master-login",
+      "destination": "/index.html"
     },
     {
-      "source": "/chapter",
-      "destination": "/chapter.html"
+      "source": "/master-access",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/national-admin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/regional-admin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/lookup",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/verify",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/verify/:control",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/print/id/:id",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/print/certificate/:id",
+      "destination": "/index.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/verify/:identifier",
+      "destination": "/profile/:identifier",
+      "permanent": false
+    },
+    {
+      "source": "/qr/:identifier",
+      "destination": "/profile/:identifier",
+      "permanent": false
+    },
+    {
+      "source": "/id/:identifier",
+      "destination": "/profile/:identifier",
+      "permanent": false
+    },
+    {
+      "source": "/member-profile/:identifier",
+      "destination": "/profile/:identifier",
+      "permanent": false
     }
   ]
 }
