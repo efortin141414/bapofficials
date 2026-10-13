@@ -1,11 +1,22 @@
-module.exports = async function handler(req, res) {
-  res.setHeader('Cache-Control', 'no-store');
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+function json(data, status = 200) {
+  return Response.json(data, {
+    status,
+    headers: { 'Cache-Control': 'no-store' }
+  });
+}
 
-  const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  if (!token) return res.status(401).json({ error: 'Admin authentication is required.' });
+export async function GET() {
+  return json({
+    ok: true,
+    route: '/api/facebook-post',
+    message: 'Facebook publishing endpoint is deployed. Use POST from Master Admin to publish.'
+  });
+}
+
+export async function POST(request) {
+  const authorization = request.headers.get('authorization') || '';
+  const token = authorization.replace(/^Bearer\s+/i, '');
+  if (!token) return json({ error: 'Admin authentication is required.' }, 401);
 
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
@@ -14,18 +25,21 @@ module.exports = async function handler(req, res) {
   const GRAPH_BASE = process.env.FACEBOOK_GRAPH_BASE || 'https://graph.facebook.com';
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return res.status(500).json({ error: 'Server Supabase environment variables are not configured.' });
+    return json({ error: 'Server Supabase environment variables are not configured.' }, 500);
   }
   if (!PAGE_ID || !PAGE_TOKEN) {
-    return res.status(503).json({ error: 'Facebook Page automation is not configured in Vercel Environment Variables.' });
+    return json({ error: 'Facebook Page automation is not configured in Vercel Environment Variables.' }, 503);
   }
 
   try {
     const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` }
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`
+      }
     });
     if (!userResponse.ok) {
-      return res.status(401).json({ error: 'Your admin session is invalid or expired.' });
+      return json({ error: 'Your admin session is invalid or expired.' }, 401);
     }
     const user = await userResponse.json();
 
@@ -41,10 +55,10 @@ module.exports = async function handler(req, res) {
     );
     const profiles = await profileResponse.json();
     if (!profileResponse.ok || !Array.isArray(profiles) || profiles[0]?.role !== 'master_admin') {
-      return res.status(403).json({ error: 'Only the Master Admin can publish automatically to Facebook.' });
+      return json({ error: 'Only the Master Admin can publish automatically to Facebook.' }, 403);
     }
 
-    const body = req.body || {};
+    const body = await request.json().catch(() => ({}));
     const title = String(body.title || 'BAP Technical Officials Update').trim();
     const message = String(body.message || '').trim();
     const link = /^https:\/\//i.test(String(body.link || '')) ? String(body.link) : '';
@@ -70,17 +84,17 @@ module.exports = async function handler(req, res) {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params
     });
-    const data = await fbResponse.json();
+    const data = await fbResponse.json().catch(() => ({}));
 
     if (!fbResponse.ok) {
-      return res.status(502).json({
+      return json({
         error: data?.error?.message || 'Facebook rejected the post.',
         facebook_error: data?.error || data
-      });
+      }, 502);
     }
 
-    return res.status(200).json({ ok: true, id: data.post_id || data.id || null });
+    return json({ ok: true, id: data.post_id || data.id || null });
   } catch (err) {
-    return res.status(500).json({ error: err?.message || 'Facebook publishing failed.' });
+    return json({ error: err?.message || 'Facebook publishing failed.' }, 500);
   }
-};
+}

@@ -1,0 +1,39 @@
+BAP TECHNICAL OFFICIALS - VERCEL API ESM FIX
+
+UPLOAD THESE ITEMS TO THE EXACT ROOT OF THE GITHUB REPOSITORY CONNECTED TO VERCEL:
+
+package.json
+vercel.json
+master.js
+api/
+  health.js
+  facebook-post.js
+
+IMPORTANT:
+1. package.json, vercel.json, index.html and the api folder must be at the SAME repository level.
+2. Delete/replace any older api/health.js and api/facebook-post.js files.
+3. Do not place the files inside another folder such as BAPOFFICIALS_VERCEL_API_ESM_FIX/.
+4. Commit the changes to the SAME branch Vercel shows under Settings > Git > Production Branch.
+5. In Vercel Settings > Build and Deployment:
+   - Framework Preset: Other
+   - Root Directory: leave blank unless your index.html is intentionally inside a subfolder
+   - Build Command: blank
+   - Output Directory: blank
+   - Install Command: blank / automatic
+6. Redeploy AFTER committing the files.
+
+VERIFY THE DEPLOYMENT:
+A. Open the latest Production Deployment in Vercel.
+B. Open Deployment Summary / Functions.
+C. It MUST list:
+   /api/health
+   /api/facebook-post
+
+Then test:
+https://www.baptechnicalofficial.com/api/health
+Expected: JSON with "ok": true.
+
+https://www.baptechnicalofficial.com/api/facebook-post
+Expected: JSON saying the endpoint is deployed.
+
+If both URLs still show 404 AND the Functions list is empty, the problem is no longer the website code. Vercel is deploying a different Git branch, a different repository, or a different Root Directory. Check the Source shown on the Production Deployment and compare it with the GitHub commit that contains the api folder.
