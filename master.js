@@ -1,6 +1,7 @@
 (function () {
   let db, profile, regions = [], chapters = [];
-  let announcementCache = [], galleryCache = [], posterCache = [], memberCache = [];
+  let announcementCache = [], galleryCache = [], posterCache = [], memberCache = [], eventCache = [];
+  let siteSettings = null;
   let regionCache = [], chapterCache = [];
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];
@@ -54,6 +55,15 @@
   function canManageRegion(regionId) {
     return profile.role === 'master_admin' || (profile.role === 'regional_admin' && profile.region_id === regionId);
   }
+  async function postToFacebook(payload) {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session?.access_token) throw new Error('Your admin session expired. Please sign in again.');
+    const res = await fetch('/api/facebook-post', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`}, body:JSON.stringify(payload) });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok) throw new Error(data.error || `Facebook publishing failed (${res.status}).`);
+    return data;
+  }
+
   function show(view) {
     $$('.admin-view').forEach(x => x.classList.toggle('active', x.id === `view-${view}`));
     $$('#admin-nav button').forEach(x => x.classList.toggle('active', x.dataset.view === view));
@@ -375,21 +385,32 @@
   }
 
   async function stats() {
-    const tables = ['announcements', 'gallery', 'regional_posters', 'members'];
-    const els = $$('#stats .stat strong');
-    for (let i = 0; i < tables.length; i++) {
-      try {
-        let q = db.from(tables[i]).select('*', { count: 'exact', head: true });
-        if (profile.role === 'regional_admin' && tables[i] !== 'announcements') q = q.eq('region_id', profile.region_id);
-        const { count, error } = await q;
-        if (error) throw error;
-        els[i].textContent = count ?? '0';
-      } catch (_) { els[i].textContent = '—'; }
-    }
+    const tables=['seminars','announcements','gallery','regional_posters','members'];
+    const counts=await Promise.all(tables.map(t=>db.from(t).select('*',{count:'exact',head:true})));
+    const els=$$('#stats .stat strong'); counts.forEach((r,i)=>{ if(els[i]) els[i].textContent=r.count ?? '—'; });
   }
 
   function recordActions(type, id, extra = '') {
     return `<div class="record-actions">${extra}<button class="edit-btn" data-edit-${type}="${id}">Edit</button><button class="delete-btn" data-del-${type}="${id}">Delete</button></div>`;
+  }
+
+  function fmtEventRange(e) {
+    if (!e.starts_on) return 'Schedule TBA';
+    return e.ends_on && e.ends_on !== e.starts_on ? `${fmtDate(e.starts_on)} – ${fmtDate(e.ends_on)}` : fmtDate(e.starts_on);
+  }
+
+  async function loadEvents() {
+    let q=db.from('seminars').select('*,regions(code,name)').order('starts_on',{ascending:false});
+    if (profile.role==='regional_admin') q=q.or(`region_id.eq.${profile.region_id},region_id.is.null`);
+    const {data,error}=await q; if(error) throw error; eventCache=data||[];
+    const list=$('#event-list'); if(!list) return;
+    list.innerHTML=eventCache.length?eventCache.map(e=>`<div class="event-admin-card"><div class="event-admin-thumb">${safeUrl(e.poster_url)?`<img src="${esc(e.poster_url)}" alt="">`:'🏀'}</div><div class="event-admin-copy"><span class="event-admin-status ${e.published?'live':''}">${e.published?'Published':'Draft'}${e.featured?' • Featured':''}</span><h3>${esc(e.title)}</h3><p>${esc(e.event_type||'Event')} • ${esc(fmtEventRange(e))}</p><p>${esc(e.venue||'Venue TBA')}${e.regions?.name?` • ${esc(e.regions.code||'')} ${esc(e.regions.name)}`:''}</p>${e.registration_url?`<p>Registration link attached ✓</p>`:''}</div><div class="record-actions"><a class="record-link-btn" href="/event?id=${encodeURIComponent(e.id)}" target="_blank" rel="noopener">View</a><button class="edit-btn" data-edit-event="${e.id}">Edit</button><button class="delete-btn" data-del-event="${e.id}">Delete</button></div></div>`).join(''):'<p class="panel-note">No events have been created yet.</p>';
+  }
+
+  async function loadSiteSettings() {
+    const {data,error}=await db.from('site_settings').select('*').eq('id','public').maybeSingle();
+    if(error) throw error; siteSettings=data||null;
+    const f=$('#social-settings-form'); if(f&&data){f.elements.facebook_page_url.value=data.facebook_page_url||'';f.elements.facebook_group_url.value=data.facebook_group_url||'';}
   }
 
   async function loadAnnouncements() {
@@ -485,11 +506,9 @@
   }
 
   async function refreshNonBlocking() {
-    const jobs = [['statistics',stats],['regions',loadRegions],['chapters',loadChapters],['announcements',loadAnnouncements],['gallery',loadGallery],['regional posters',loadPosters],['members',loadMembers]];
-    const results = await Promise.allSettled(jobs.map(([, fn]) => fn()));
-    const failed = results.map((r, i) => r.status === 'rejected' ? `${jobs[i][0]}: ${friendly(r.reason)}` : null).filter(Boolean);
-    if (failed.length) dashboardStatus(`Master Page opened, but some data could not load yet. ${failed.join(' | ')}`, true);
-    else dashboardStatus('Master Page connected to Supabase successfully.', false);
+    const results=await Promise.allSettled([stats(),loadEvents(),loadAnnouncements(),loadGallery(),loadPosters(),loadMembers(),loadSiteSettings()]);
+    const failed=results.filter(x=>x.status==='rejected');
+    if(failed.length) dashboardStatus(`${failed.length} dashboard section(s) could not refresh: ${failed.map(x=>friendly(x.reason)).join(' | ')}`,true); else dashboardStatus('Dashboard data is up to date.');
   }
 
   function clearObjectPreview(preview) {
@@ -513,6 +532,7 @@
   }
   function setEditMode(kind, editing) {
     const titles = {
+      'event':['Add Upcoming Event / Accreditation','Edit Event / Accreditation','Save Event','Update Event'],
       'announcement':['Add Announcement','Edit Announcement','Save Announcement','Update Announcement'],
       'gallery':['Upload Gallery Photo','Edit Gallery Photo','Upload Photo','Update Gallery Photo'],
       'region-poster':['Add Region / Chapter Poster','Edit Region / Chapter Poster','Upload Poster','Update Poster'],
@@ -545,10 +565,17 @@
     if (kind === 'region-poster') { const loc=$('#poster-locality-select'); if(loc){loc.innerHTML='<option value="">Choose a region first</option>';loc.disabled=true;} populatePosterChapterSelect(form.elements.region_id?.value || '', '', ''); }
     if (kind === 'member') { populateMemberChapterSelect(''); syncMemberValidity(true); }
     if (kind === 'chapter') { const loc=$('#chapter-locality-select'); if(loc){loc.innerHTML='<option value="">Select a region first</option>';loc.disabled=true;} }
+    if (kind === 'event') { if (form.elements.published) form.elements.published.checked=true; if (form.elements.facebook_auto_post) form.elements.facebook_auto_post.checked=false; }
     if (kind === 'announcement') updateAnnouncementPreview();
   }
   function scrollToForm(kind) {
     $(`#${kind}-form-panel`)?.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  function beginEventEdit(id) {
+    const r=eventCache.find(x=>x.id===id); if(!r) return; const f=$('#event-form');
+    f.elements.edit_id.value=r.id; f.elements.existing_image_url.value=r.poster_url||''; f.elements.title.value=r.title||''; f.elements.event_type.value=r.event_type||'National Accreditation'; f.elements.region_id.value=r.region_id||''; f.elements.venue.value=r.venue||''; f.elements.starts_on.value=r.starts_on||''; f.elements.ends_on.value=r.ends_on||''; f.elements.registration_url.value=r.registration_url||''; f.elements.facebook_event_url.value=r.facebook_event_url||''; f.elements.details.value=r.details||''; f.elements.featured.checked=!!r.featured; f.elements.published.checked=!!r.published; f.elements.facebook_auto_post.checked=false;
+    setPreview('event',r.poster_url); setEditMode('event',true); scrollToForm('event');
   }
 
   function beginAnnouncementEdit(id) {
@@ -634,7 +661,7 @@
     $('#poster-region-select')?.addEventListener('change', async e => { await populateLocalitySelect($('#poster-locality-select'), e.target.value, '', '', true, 'All cities / municipalities'); populatePosterChapterSelect(e.target.value,'',''); });
     $('#gallery-locality-select')?.addEventListener('change', e => populateGalleryChapterSelect($('#gallery-region-select')?.value || '', '', e.target.value));
     $('#poster-locality-select')?.addEventListener('change', e => populatePosterChapterSelect($('#poster-region-select')?.value || '', '', e.target.value));
-    ['announcement','gallery','region-poster','member'].forEach(bindImageInput);
+    ['event','announcement','gallery','region-poster','member'].forEach(bindImageInput);
     $$('[data-cancel]').forEach(b => b.addEventListener('click', () => resetForm(b.dataset.cancel)));
     $('#announcement-body')?.addEventListener('input', updateAnnouncementPreview);
     $$('.format-toolbar button[data-format]').forEach(b => b.addEventListener('click', () => applyFormat($('#announcement-body'),b.dataset.format)));
@@ -666,6 +693,37 @@
       } catch (err) { msg(f,friendly(err),false); }
     });
 
+    $('#event-form')?.addEventListener('submit', async e => {
+      e.preventDefault(); const f=e.currentTarget; const editing=!!f.elements.edit_id.value; msg(f,editing?'Updating…':'Saving…');
+      try {
+        const fd=new FormData(f); const regionId=fd.get('region_id')||null;
+        if(regionId&&!canManageRegion(regionId)) throw new Error('You cannot manage events for this region.');
+        let image=fd.get('existing_image_url')||null; const file=fd.get('image'); if(file?.size) image=await upload(file,'events');
+        const payload={title:String(fd.get('title')||'').trim(),event_type:fd.get('event_type')||'Accreditation',region_id:regionId,venue:fd.get('venue')||null,starts_on:fd.get('starts_on')||null,ends_on:fd.get('ends_on')||null,details:fd.get('details')||null,poster_url:image,registration_url:fd.get('registration_url')||null,facebook_event_url:fd.get('facebook_event_url')||null,featured:fd.get('featured')==='on',published:fd.get('published')==='on'};
+        if(!payload.title) throw new Error('Event title is required.');
+        if(!payload.starts_on) throw new Error('Start date is required.');
+        if(payload.ends_on && payload.ends_on < payload.starts_on) throw new Error('End date cannot be before the start date.');
+        if(payload.featured){let q=db.from('seminars').update({featured:false}); if(editing) q=q.neq('id',fd.get('edit_id')); const {error:featureError}=await q; if(featureError) throw featureError;}
+        const result=editing?await db.from('seminars').update(payload).eq('id',fd.get('edit_id')).select().single():await db.from('seminars').insert({...payload,created_by:profile.id}).select().single();
+        if(result.error) throw result.error;
+        let fb='';
+        if(fd.get('facebook_auto_post')==='on'&&payload.published){
+          try{await postToFacebook({kind:'event',title:payload.title,message:payload.details||'',image_url:payload.poster_url||null,link:`${location.origin}/event?id=${result.data.id}`});fb=' Facebook post created.';}
+          catch(x){fb=` Website saved, but Facebook posting failed: ${friendly(x)}`;}
+        }
+        resetForm('event'); msg(f,(editing?'Event updated.':'Event saved.')+fb,!/failed/i.test(fb)); await refreshNonBlocking();
+      } catch(err){msg(f,friendly(err),false);}
+    });
+
+    $('#social-settings-form')?.addEventListener('submit', async e => {
+      e.preventDefault(); const f=e.currentTarget; msg(f,'Saving…');
+      try{
+        const fd=new FormData(f); const payload={id:'public',facebook_page_url:fd.get('facebook_page_url')||null,facebook_group_url:fd.get('facebook_group_url')||null,updated_at:new Date().toISOString()};
+        const {error}=await db.from('site_settings').upsert(payload,{onConflict:'id'}); if(error) throw error;
+        msg(f,'Facebook Page and Group links saved.'); await loadSiteSettings();
+      } catch(err){msg(f,friendly(err),false);}
+    });
+
     $('#announcement-form')?.addEventListener('submit', async e => {
       e.preventDefault(); const f = e.currentTarget; const editing = !!f.elements.edit_id.value; msg(f, editing ? 'Updating…' : 'Saving…');
       try {
@@ -675,9 +733,17 @@
         const published = fd.get('published') === 'on';
         const existing = editing ? announcementCache.find(x => x.id === fd.get('edit_id')) : null;
         const payload = { title: fd.get('title'), category: fd.get('category') || null, event_date: fd.get('event_date') || null, body: fd.get('body') || null, image_url: image, published, published_at: published ? (existing?.published_at || new Date().toISOString()) : null };
-        let result = editing ? db.from('announcements').update(payload).eq('id',fd.get('edit_id')) : db.from('announcements').insert({...payload,created_by:profile.id});
-        const { error } = await result; if (error) throw error;
-        resetForm('announcement'); msg(f, editing ? 'Announcement updated.' : 'Announcement saved.'); await refreshNonBlocking();
+        let result = editing ? await db.from('announcements').update(payload).eq('id',fd.get('edit_id')).select().single() : await db.from('announcements').insert({...payload,created_by:profile.id}).select().single();
+        if (result.error) throw result.error;
+        let fbNote='';
+        if (fd.get('facebook_auto_post') === 'on' && published) {
+          try {
+            const fb=await postToFacebook({kind:'announcement',title:payload.title,message:payload.body||'',image_url:payload.image_url||null,link:`${location.origin}/announcement?id=${result.data.id}`});
+            fbNote=' Facebook post created.';
+            if (fb.id) await db.from('announcements').update({facebook_post_id:String(fb.id),facebook_posted_at:new Date().toISOString()}).eq('id',result.data.id);
+          } catch(x) { fbNote=` Website saved, but Facebook posting failed: ${friendly(x)}`; }
+        }
+        resetForm('announcement'); msg(f, (editing ? 'Announcement updated.' : 'Announcement saved.') + fbNote, !/failed/i.test(fbNote)); await refreshNonBlocking();
       } catch (err) { msg(f,friendly(err),false); }
     });
 
@@ -729,6 +795,7 @@
 
     document.body.addEventListener('click', async e => {
       const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.editEvent) return beginEventEdit(b.dataset.editEvent);
       if (b.dataset.editAnn) return beginAnnouncementEdit(b.dataset.editAnn);
       if (b.dataset.editGallery) return beginGalleryEdit(b.dataset.editGallery);
       if (b.dataset.editPoster) return beginPosterEdit(b.dataset.editPoster);
@@ -737,6 +804,7 @@
       if (b.dataset.editChapter) return beginChapterEdit(b.dataset.editChapter);
 
       let table,id;
+      if (b.dataset.delEvent) { table='seminars'; id=b.dataset.delEvent; }
       if (b.dataset.delAnn) { table='announcements'; id=b.dataset.delAnn; }
       if (b.dataset.delGallery) { table='gallery'; id=b.dataset.delGallery; }
       if (b.dataset.delPoster) { table='regional_posters'; id=b.dataset.delPoster; }

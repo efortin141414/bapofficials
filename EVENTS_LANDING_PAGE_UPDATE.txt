@@ -1,0 +1,32 @@
+BAPTO UPCOMING EVENTS / ACCREDITATION LANDING PAGE UPDATE
+
+NEW PUBLIC FEATURES
+- Modern Upcoming Events & Accreditation landing section on homepage
+- Featured event + upcoming event cards
+- Registration button per event
+- Full event detail page at /event?id=EVENT_ID
+- Facebook Page and Facebook Group buttons
+- Share Event button
+
+NEW MASTER ADMIN FEATURES
+- Events & Accreditation module
+- Add/Edit/Delete event
+- Event poster, dates, venue, region, type, details
+- Registration URL
+- Facebook Event URL
+- Feature event toggle
+- Publish/draft toggle
+- Optional Facebook Page post after saving
+- Facebook Page/Group public link settings
+
+FACEBOOK ANNOUNCEMENTS
+- Announcement form now has an automatic Facebook Page checkbox
+- Website saves the announcement first, then securely calls /api/facebook-post
+- Facebook credentials must be secure Vercel Environment Variables
+
+SETUP
+1. Run EVENTS_FACEBOOK_UPDATE.sql in Supabase.
+2. Upload all files to GitHub/Vercel.
+3. Configure Vercel environment variables listed in FACEBOOK_AUTOMATION_SETUP.md.
+4. Redeploy.
+5. Open /master > Events & Accreditation.

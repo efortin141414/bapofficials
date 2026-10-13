@@ -24,6 +24,7 @@
     </div>
     <nav id="admin-nav">
       <button data-view="dashboard" class="active">Dashboard</button>
+      <button data-view="events">Events &amp; Accreditation</button>
       <button data-view="announcements">Announcements</button>
       <button data-view="gallery">Gallery</button>
       <button data-view="regions">Regional Posters</button>
@@ -44,6 +45,7 @@
 
     <section id="view-dashboard" class="admin-view active">
       <div class="stats" id="stats">
+        <div class="stat"><strong>—</strong><span>Events</span></div>
         <div class="stat"><strong>—</strong><span>Announcements</span></div>
         <div class="stat"><strong>—</strong><span>Gallery Photos</span></div>
         <div class="stat"><strong>—</strong><span>Regional Posters</span></div>
@@ -53,6 +55,34 @@
         <h2>Master Access</h2>
         <p>You can now <strong>add, edit, publish, organize regions and chapters, manage members, replace images, and delete</strong> records from all Master Admin sections. Regions and chapters saved here automatically appear in the public Regional and Chapter Leadership directory.</p>
       </div>
+    </section>
+
+    <section id="view-events" class="admin-view">
+      <div class="panel form-panel" id="event-form-panel">
+        <div class="panel-title-row"><div><span class="mode-badge" id="event-mode-badge">NEW</span><h2 id="event-form-title">Add Upcoming Event / Accreditation</h2></div><button type="button" class="cancel-edit secondary-btn" data-cancel="event" hidden>Cancel Edit</button></div>
+        <form id="event-form" class="admin-form">
+          <input type="hidden" name="edit_id"><input type="hidden" name="existing_image_url">
+          <div class="form-grid">
+            <label>Event Title<input name="title" required placeholder="National Accreditation & Basketball Officiating Seminar"></label>
+            <label>Event Type<select name="event_type"><option>National Accreditation</option><option>Regional Accreditation</option><option>Basketball Officiating Seminar</option><option>Workout / Training</option><option>Meeting / Conference</option><option>Other Event</option></select></label>
+            <label>Region<select name="region_id" class="region-select"><option value="">National / All Regions</option></select></label>
+            <label>Venue<input name="venue" placeholder="Venue, City / Municipality"></label>
+            <label>Start Date<input name="starts_on" type="date" required></label>
+            <label>End Date<input name="ends_on" type="date"></label>
+            <label>Registration Link<input name="registration_url" type="url" placeholder="https://forms.google.com/... or registration page"></label>
+            <label>Facebook Event Link<input name="facebook_event_url" type="url" placeholder="https://facebook.com/events/..."></label>
+            <label>Event Poster<input name="image" type="file" accept="image/*"><small class="field-hint">Upload a poster to feature the event on the landing page.</small></label>
+          </div>
+          <div class="image-edit-preview" id="event-preview-wrap" hidden><img id="event-image-preview" alt="Event poster preview"><span>Current / selected event poster</span></div>
+          <label>Event Details<textarea name="details" rows="6" placeholder="Program details, schedule, eligibility, fees, clinicians, contact information, and reminders."></textarea></label>
+          <label class="check"><input name="featured" type="checkbox"> Feature this event first on the landing page</label>
+          <label class="check"><input name="published" type="checkbox" checked> Publish on the public website</label>
+          <label class="check facebook-auto-check"><input name="facebook_auto_post" type="checkbox"> Also post this event to the connected Facebook Page after saving</label>
+          <div class="form-actions"><button class="primary-save" type="submit"><span class="save-label">Save Event</span></button><button type="button" class="cancel-edit secondary-btn" data-cancel="event" hidden>Cancel Edit</button><span class="form-message"></span></div>
+        </form>
+      </div>
+      <div class="panel"><div class="panel-head"><div><h2>Upcoming &amp; Past Events</h2><span class="panel-note">Registration links appear automatically on published event cards.</span></div></div><div class="record-list" id="event-list"></div></div>
+      <div class="panel form-panel" id="social-settings-panel"><div class="panel-title-row"><div><span class="mode-badge">SOCIAL</span><h2>Facebook &amp; Community Links</h2></div></div><form id="social-settings-form" class="admin-form"><div class="form-grid"><label>Official Facebook Page URL<input name="facebook_page_url" type="url" placeholder="https://www.facebook.com/yourpage"></label><label>Official Facebook Group URL<input name="facebook_group_url" type="url" placeholder="https://www.facebook.com/groups/yourgroup"></label></div><small class="field-hint">These public links will appear on the Events landing page. The secret Page Access Token is never stored here.</small><div class="form-actions"><button class="primary-save" type="submit">Save Social Links</button><span class="form-message"></span></div></form></div>
     </section>
 
     <section id="view-announcements" class="admin-view">
@@ -85,6 +115,8 @@
           <small class="field-hint">Formatting uses simple Markdown: <strong>**bold**</strong>, <em>*italic*</em>, headings, and bullet lists.</small>
           <div class="format-preview"><span>Preview</span><div id="announcement-format-preview" class="formatted-content"></div></div>
           <label class="check"><input name="published" type="checkbox" checked> Publish immediately</label>
+          <label class="check facebook-auto-check"><input name="facebook_auto_post" type="checkbox" checked> Automatically post this published announcement to the connected Facebook Page</label>
+          <small class="field-hint">Facebook auto-posting requires the Meta Page ID and Page Access Token to be configured as secure Vercel Environment Variables.</small>
           <div class="form-actions">
             <button type="submit" class="primary-save"><span class="save-label">Save Announcement</span></button>
             <button type="button" class="cancel-edit secondary-btn" data-cancel="announcement" hidden>Cancel Edit</button>
@@ -276,6 +308,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/supabase-config.js?v=20260912-1"></script>
-<script src="/master.js?v=20260915-3"></script>
+<script src="/master.js?v=20261013-events1"></script>
 </body>
 </html>

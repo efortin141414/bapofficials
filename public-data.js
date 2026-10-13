@@ -14,6 +14,49 @@
     console.info('BAPTO dynamic content is waiting for Supabase configuration.');
   }
 
+  let publicSiteSettings = null;
+
+  async function loadSiteSettings(db) {
+    const { data, error } = await db.from('site_settings').select('*').eq('id','public').maybeSingle();
+    if (error) { console.warn('Site settings:', error.message); return null; }
+    publicSiteSettings = data || null;
+    const page = safeUrl(data?.facebook_page_url || '');
+    const group = safeUrl(data?.facebook_group_url || '');
+    document.querySelectorAll('.fb-page-link').forEach(a => { if (page) { a.href=page; a.hidden=false; } });
+    document.querySelectorAll('.fb-group-link').forEach(a => { if (group) { a.href=group; a.hidden=false; } });
+    return data;
+  }
+
+  function eventDateLabel(e) {
+    if (!e.starts_on) return 'Schedule to be announced';
+    const start = fmtDate(e.starts_on);
+    const end = e.ends_on && e.ends_on !== e.starts_on ? fmtDate(e.ends_on) : '';
+    return end ? `${start} – ${end}` : start;
+  }
+
+  function eventActions(e, compact=false) {
+    const reg=safeUrl(e.registration_url || '');
+    const details=`/event?id=${encodeURIComponent(e.id)}`;
+    if (compact) return `${reg?`<a class="primary" href="${esc(reg)}" target="_blank" rel="noopener">Register</a>`:''}<a href="${details}">Details</a>`;
+    return `${reg?`<a class="btn event-register-btn" href="${esc(reg)}" target="_blank" rel="noopener">Register Now</a>`:''}<a class="btn event-detail-btn" href="${details}">View Event Details</a>`;
+  }
+
+  async function loadEvents(db) {
+    const featured = document.getElementById('featured-event-shell');
+    const grid = document.getElementById('dynamic-events');
+    const empty = document.getElementById('events-empty');
+    if (!featured || !grid) return;
+    const today = new Date(); today.setHours(0,0,0,0); const iso = today.toISOString().slice(0,10);
+    const { data, error } = await db.from('seminars').select('*,regions(code,name)').eq('published',true).or(`ends_on.gte.${iso},and(ends_on.is.null,starts_on.gte.${iso})`).order('featured',{ascending:false}).order('starts_on',{ascending:true}).limit(12);
+    if (error) { featured.innerHTML='<div class="event-loading-card"><strong>Upcoming events could not be loaded.</strong></div>'; console.warn(error.message); return; }
+    const events=data||[];
+    if (!events.length) { featured.innerHTML=''; grid.innerHTML=''; if(empty) empty.hidden=false; return; }
+    if(empty) empty.hidden=true;
+    const e=events[0];
+    featured.innerHTML=`<article class="featured-event"><div class="featured-event-media ${safeUrl(e.poster_url)?'':'no-poster'}">${safeUrl(e.poster_url)?`<img src="${esc(safeUrl(e.poster_url))}" alt="${esc(e.title)} poster" loading="lazy">`:'🏀'}</div><div class="featured-event-content"><span class="event-pill">${esc(e.event_type||'Upcoming Accreditation')}</span><h3>${esc(e.title)}</h3><div class="event-meta-list"><span>📅 ${esc(eventDateLabel(e))}</span>${e.venue?`<span>📍 ${esc(e.venue)}</span>`:''}${e.regions?.name?`<span>🌏 ${esc(e.regions.code||'')} ${esc(e.regions.name)}</span>`:''}</div><p class="featured-event-description">${esc((e.details||'Official BAP Technical Officials training and accreditation activity.').slice(0,420))}</p><div class="event-action-row">${eventActions(e,false)}</div></div></article>`;
+    grid.innerHTML=events.slice(1).map(e=>`<article class="public-event-card"><div class="event-card-image">${safeUrl(e.poster_url)?`<img src="${esc(safeUrl(e.poster_url))}" alt="${esc(e.title)} poster" loading="lazy">`:'🏀'}</div><div class="public-event-card-body"><span class="event-type">${esc(e.event_type||'Accreditation Event')}</span><h3>${esc(e.title)}</h3><p>📅 ${esc(eventDateLabel(e))}</p>${e.venue?`<p>📍 ${esc(e.venue)}</p>`:''}<div class="mini-event-actions">${eventActions(e,true)}</div></div></article>`).join('');
+  }
+
   async function loadAnnouncements(db) {
     const target = document.getElementById('dynamic-announcements');
     if (!target) return;
@@ -225,7 +268,8 @@
   document.addEventListener('DOMContentLoaded', async () => {
     try {
       const db = window.getBaptoSupabase();
-      await Promise.allSettled([loadAnnouncements(db), loadGallery(db), loadRegionPosters(db), loadChapterDirectory(db), loadMembers(db)]);
+      await loadSiteSettings(db);
+      await Promise.allSettled([loadEvents(db), loadAnnouncements(db), loadGallery(db), loadRegionPosters(db), loadChapterDirectory(db), loadMembers(db)]);
     } catch (err) { showConfigNotice(err); }
   });
 })();
