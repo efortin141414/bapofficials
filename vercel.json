@@ -2,48 +2,19 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    {
-      "source": "/admin",
-      "destination": "/admin.html"
-    },
-    {
-      "source": "/master",
-      "destination": "/master.html"
-    },
-    {
-      "source": "/reset-password",
-      "destination": "/reset-password.html"
-    },
-    {
-      "source": "/member",
-      "destination": "/member.html"
-    },
-    {
-      "source": "/announcement",
-      "destination": "/announcement.html"
-    },
-    {
-      "source": "/chapter",
-      "destination": "/chapter.html"
-    },
-    {
-      "source": "/event",
-      "destination": "/event.html"
-    }
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/master", "destination": "/master.html" },
+    { "source": "/reset-password", "destination": "/reset-password.html" },
+    { "source": "/member", "destination": "/member.html" },
+    { "source": "/announcement", "destination": "/announcement.html" },
+    { "source": "/chapter", "destination": "/chapter.html" },
+    { "source": "/event", "destination": "/event.html" }
   ],
-  "functions": {
-    "api/*.js": {
-      "maxDuration": 10
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store"
-        }
+        { "key": "Cache-Control", "value": "no-store" }
       ]
     }
   ]
