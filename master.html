@@ -115,8 +115,7 @@
           <small class="field-hint">Formatting uses simple Markdown: <strong>**bold**</strong>, <em>*italic*</em>, headings, and bullet lists.</small>
           <div class="format-preview"><span>Preview</span><div id="announcement-format-preview" class="formatted-content"></div></div>
           <label class="check"><input name="published" type="checkbox" checked> Publish immediately</label>
-          <label class="check facebook-auto-check"><input name="facebook_auto_post" type="checkbox" checked> Automatically post this published announcement to the connected Facebook Page</label>
-          <small class="field-hint">Facebook auto-posting requires the Meta Page ID and Page Access Token to be configured as secure Vercel Environment Variables.</small>
+          <div class="facebook-auto-check"><strong>Facebook Auto-Post: ON</strong><br><small class="field-hint">Every newly published announcement is automatically posted once to the connected official Facebook Page. Drafts are posted automatically when they are later published. Existing announcements can be sent using the bulk button below.</small></div>
           <div class="form-actions">
             <button type="submit" class="primary-save"><span class="save-label">Save Announcement</span></button>
             <button type="button" class="cancel-edit secondary-btn" data-cancel="announcement" hidden>Cancel Edit</button>
@@ -124,7 +123,7 @@
           </div>
         </form>
       </div>
-      <div class="panel"><div class="panel-head"><h2>Published & Draft Announcements</h2><span class="panel-note">Edit, preview, or delete any item.</span></div><div id="announcement-list" class="record-list"></div></div>
+      <div class="panel"><div class="panel-head"><div><h2>Published & Draft Announcements</h2><span class="panel-note" id="announcement-facebook-status">Facebook status will appear here.</span></div><button type="button" id="post-all-announcements-facebook" class="secondary-btn" data-master-only>Post Pending Announcements to Facebook</button></div><div id="announcement-list" class="record-list"></div></div>
     </section>
 
     <section id="view-gallery" class="admin-view">

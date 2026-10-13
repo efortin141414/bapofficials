@@ -1,0 +1,23 @@
+BAP Technical Officials - GitHub Ready Fix
+
+This package fixes the Supabase error:
+UPDATE requires a WHERE clause
+
+What changed:
+- master.js now clears previous Featured events only where featured = true.
+- api/facebook-post.js is included at the repository root under /api.
+- api/health.js is included for testing Vercel server functions.
+- vercel.json includes the API and page routes.
+
+UPLOAD INSTRUCTIONS
+1. Extract this ZIP.
+2. Open your existing GitHub repository.
+3. Upload/replace ALL extracted files at the repository root.
+   index.html and the api folder must be at the same repository level.
+4. Commit changes.
+5. Wait for Vercel to redeploy.
+6. Test: https://www.baptechnicalofficial.com/api/health
+7. Open /master and save a Featured Event again.
+
+IMPORTANT
+Do not upload the ZIP file itself as your website and expect GitHub/Vercel to unzip it. Extract it first, then upload its contents.

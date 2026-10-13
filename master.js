@@ -60,8 +60,29 @@
     if (!session?.access_token) throw new Error('Your admin session expired. Please sign in again.');
     const res = await fetch('/api/facebook-post', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`}, body:JSON.stringify(payload) });
     const data = await res.json().catch(()=>({}));
-    if (!res.ok) throw new Error(data.error || `Facebook publishing failed (${res.status}).`);
+    if (!res.ok) {
+      if (res.status === 404) throw new Error('Facebook API route is not deployed. Make sure api/facebook-post.js is in the ROOT of the GitHub/Vercel project, then redeploy.');
+      throw new Error(data.error || `Facebook publishing failed (${res.status}).`);
+    }
     return data;
+  }
+
+  async function publishAnnouncementToFacebook(row) {
+    if (!row?.id) throw new Error('Announcement record is missing.');
+    if (!row.published) throw new Error('Publish the announcement on the website before posting it to Facebook.');
+    const fb = await postToFacebook({
+      kind:'announcement',
+      title:row.title || 'BAP Technical Officials Update',
+      message:row.body || '',
+      image_url:row.image_url || null,
+      link:`${location.origin}/announcement?id=${encodeURIComponent(row.id)}`
+    });
+    const { error } = await db.from('announcements').update({
+      facebook_post_id:String(fb.id || ''),
+      facebook_posted_at:new Date().toISOString()
+    }).eq('id',row.id);
+    if (error) throw error;
+    return fb;
   }
 
   function show(view) {
@@ -417,11 +438,22 @@
     const { data, error } = await db.from('announcements').select('*').order('created_at', { ascending: false }).limit(100);
     if (error) throw error;
     announcementCache = data || [];
+    const pendingCount = announcementCache.filter(r => r.published && !r.facebook_posted_at).length;
+    const bulkBtn = $('#post-all-announcements-facebook');
+    const bulkStatus = $('#announcement-facebook-status');
+    if (bulkBtn) {
+      bulkBtn.disabled = pendingCount === 0 || profile.role !== 'master_admin';
+      bulkBtn.textContent = pendingCount ? `Post ${pendingCount} Pending Announcement${pendingCount === 1 ? '' : 's'} to Facebook` : 'All Published Announcements Posted';
+      bulkBtn.hidden = profile.role !== 'master_admin';
+    }
+    if (bulkStatus) bulkStatus.textContent = pendingCount ? `${pendingCount} published announcement${pendingCount === 1 ? '' : 's'} still need Facebook posting.` : 'All published announcements in this list have been posted to Facebook.';
     $('#announcement-list').innerHTML = announcementCache.map(r => {
       const imageUrl = safeUrl(r.image_url);
       const image = imageUrl ? `<a class="announcement-thumb-link" href="${esc(imageUrl)}" target="_blank" rel="noopener" title="Open poster"><img class="announcement-thumb" src="${esc(imageUrl)}" alt="${esc(r.title)} poster" loading="lazy"></a>` : `<div class="announcement-no-image">No image</div>`;
       const open = `<a class="record-link-btn" href="/announcement?id=${encodeURIComponent(r.id)}" target="_blank" rel="noopener">Open</a>`;
-      return `<div class="record-row announcement-record">${image}<div class="grow"><strong>${esc(r.title)}</strong><small>${esc(r.category || 'Announcement')} • ${fmtDate(r.event_date || r.created_at)} • <span class="status-text ${r.published ? 'is-live' : 'is-draft'}">${r.published ? 'Published' : 'Draft'}</span></small>${imageUrl ? `<small class="image-status">Poster uploaded ✓</small>` : `<small class="image-status warning">No poster attached</small>`}</div>${recordActions('ann', r.id, open)}</div>`;
+      const fbStatus = !r.published ? '<small class="image-status warning">Facebook: waiting until published</small>' : r.facebook_posted_at ? `<small class="image-status">Facebook posted ✓ ${fmtDate(r.facebook_posted_at)}</small>` : '<small class="image-status warning">Facebook: pending</small>';
+      const fbAction = r.published && profile.role === 'master_admin' ? `<button type="button" class="record-link-btn" data-facebook-ann="${r.id}">${r.facebook_posted_at ? 'Post Again' : 'Post to FB'}</button>` : '';
+      return `<div class="record-row announcement-record">${image}<div class="grow"><strong>${esc(r.title)}</strong><small>${esc(r.category || 'Announcement')} • ${fmtDate(r.event_date || r.created_at)} • <span class="status-text ${r.published ? 'is-live' : 'is-draft'}">${r.published ? 'Published' : 'Draft'}</span></small>${imageUrl ? `<small class="image-status">Poster uploaded ✓</small>` : `<small class="image-status warning">No poster attached</small>`}${fbStatus}</div>${recordActions('ann', r.id, open + fbAction)}</div>`;
     }).join('') || '<p>No announcements yet.</p>';
   }
 
@@ -703,7 +735,7 @@
         if(!payload.title) throw new Error('Event title is required.');
         if(!payload.starts_on) throw new Error('Start date is required.');
         if(payload.ends_on && payload.ends_on < payload.starts_on) throw new Error('End date cannot be before the start date.');
-        if(payload.featured){let q=db.from('seminars').update({featured:false}); if(editing) q=q.neq('id',fd.get('edit_id')); const {error:featureError}=await q; if(featureError) throw featureError;}
+        if(payload.featured){let q=db.from('seminars').update({featured:false}).eq('featured',true); if(editing) q=q.neq('id',fd.get('edit_id')); const {error:featureError}=await q; if(featureError) throw featureError;}
         const result=editing?await db.from('seminars').update(payload).eq('id',fd.get('edit_id')).select().single():await db.from('seminars').insert({...payload,created_by:profile.id}).select().single();
         if(result.error) throw result.error;
         let fb='';
@@ -736,12 +768,18 @@
         let result = editing ? await db.from('announcements').update(payload).eq('id',fd.get('edit_id')).select().single() : await db.from('announcements').insert({...payload,created_by:profile.id}).select().single();
         if (result.error) throw result.error;
         let fbNote='';
-        if (fd.get('facebook_auto_post') === 'on' && published) {
-          try {
-            const fb=await postToFacebook({kind:'announcement',title:payload.title,message:payload.body||'',image_url:payload.image_url||null,link:`${location.origin}/announcement?id=${result.data.id}`});
-            fbNote=' Facebook post created.';
-            if (fb.id) await db.from('announcements').update({facebook_post_id:String(fb.id),facebook_posted_at:new Date().toISOString()}).eq('id',result.data.id);
-          } catch(x) { fbNote=` Website saved, but Facebook posting failed: ${friendly(x)}`; }
+        const alreadyPosted = !!existing?.facebook_posted_at;
+        if (published && !alreadyPosted) {
+          if (profile.role !== 'master_admin') {
+            fbNote=' Website saved. Facebook posting is queued for the Master Admin.';
+          } else {
+            try {
+              await publishAnnouncementToFacebook({...result.data, ...payload});
+              fbNote=' Facebook post created automatically.';
+            } catch(x) { fbNote=` Website saved, but Facebook posting failed: ${friendly(x)}`; }
+          }
+        } else if (published && alreadyPosted) {
+          fbNote=' Facebook was already posted; use “Post Again” if you want to publish the edited version as a new Facebook post.';
         }
         resetForm('announcement'); msg(f, (editing ? 'Announcement updated.' : 'Announcement saved.') + fbNote, !/failed/i.test(fbNote)); await refreshNonBlocking();
       } catch (err) { msg(f,friendly(err),false); }
@@ -802,6 +840,42 @@
       if (b.dataset.editMember) return beginMemberEdit(b.dataset.editMember);
       if (b.dataset.editRegion) return beginRegionEdit(b.dataset.editRegion);
       if (b.dataset.editChapter) return beginChapterEdit(b.dataset.editChapter);
+
+      if (b.dataset.facebookAnn) {
+        const row = announcementCache.find(x => String(x.id) === String(b.dataset.facebookAnn));
+        if (!row) return;
+        if (profile.role !== 'master_admin') return alert('Only the Master Admin can post to the official Facebook Page.');
+        const again = !!row.facebook_posted_at;
+        if (again && !confirm('This announcement was already posted to Facebook. Post it again as a new Facebook post?')) return;
+        const oldText = b.textContent; b.disabled = true; b.textContent = 'Posting…';
+        try {
+          await publishAnnouncementToFacebook(row);
+          alert('Announcement posted to Facebook successfully.');
+          await refreshNonBlocking();
+        } catch (err) { alert(`Facebook posting failed: ${friendly(err)}`); }
+        finally { b.disabled = false; b.textContent = oldText; }
+        return;
+      }
+
+      if (b.id === 'post-all-announcements-facebook') {
+        if (profile.role !== 'master_admin') return alert('Only the Master Admin can post to the official Facebook Page.');
+        const pending = announcementCache.filter(r => r.published && !r.facebook_posted_at);
+        if (!pending.length) return alert('All published announcements in the current list are already posted to Facebook.');
+        if (!confirm(`Post ${pending.length} published announcement${pending.length === 1 ? '' : 's'} to the official Facebook Page now?`)) return;
+        const status = $('#announcement-facebook-status');
+        b.disabled = true; let posted = 0, failed = 0;
+        for (let i = 0; i < pending.length; i++) {
+          if (status) status.textContent = `Posting ${i + 1} of ${pending.length}: ${pending[i].title}`;
+          try { await publishAnnouncementToFacebook(pending[i]); posted++; }
+          catch (err) { failed++; if (status) status.textContent = `Facebook error on “${pending[i].title}”: ${friendly(err)}`; }
+          if (i < pending.length - 1) await new Promise(resolve => setTimeout(resolve, 800));
+        }
+        if (status) status.textContent = `Facebook posting complete: ${posted} posted${failed ? `, ${failed} failed` : ''}.`;
+        b.disabled = false;
+        await refreshNonBlocking();
+        alert(`Facebook posting complete. ${posted} announcement${posted === 1 ? '' : 's'} posted${failed ? `; ${failed} failed.` : '.'}`);
+        return;
+      }
 
       let table,id;
       if (b.dataset.delEvent) { table='seminars'; id=b.dataset.delEvent; }
