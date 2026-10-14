@@ -1,9 +1,5 @@
 {
-  "name": "baptechnicalofficial-website",
-  "version": "1.0.0",
+  "name": "bapofficials",
   "private": true,
-  "type": "module",
-  "engines": {
-    "node": "22.x"
-  }
+  "type": "module"
 }
