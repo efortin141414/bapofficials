@@ -1,0 +1,29 @@
+BAPTO VERCEL FUNCTION PATTERN FIX
+
+This package fixes the Vercel deployment error:
+  The pattern "api/*.js" defined in `functions` doesn't match any Serverless Functions inside the `api` directory.
+
+WHAT CHANGED
+- Removed the unnecessary `functions` block from vercel.json.
+- Kept api/facebook-post.js and api/health.js in the root api/ directory.
+- Kept the all-announcements-to-Facebook update.
+
+UPLOAD TO GITHUB
+1. Extract this ZIP.
+2. Upload the CONTENTS directly to the root of your existing GitHub repository.
+3. Confirm GitHub shows:
+   index.html
+   master.html
+   master.js
+   vercel.json
+   api/facebook-post.js
+   api/health.js
+4. Do not upload the outer folder as an extra nested folder.
+5. Commit changes and wait for Vercel to redeploy.
+
+TEST AFTER DEPLOYMENT
+Open:
+  https://www.baptechnicalofficial.com/api/health
+Expected: JSON with ok:true.
+
+Then publish an announcement from Master Admin.

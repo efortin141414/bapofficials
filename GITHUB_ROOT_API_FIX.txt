@@ -1,0 +1,46 @@
+BAP Technical Officials - Vercel API Deployment Fix
+
+IMPORTANT: Upload the CONTENTS of this folder directly to the ROOT of your GitHub repository.
+Do not upload this whole folder as a nested directory.
+
+Your GitHub repository ROOT must look like:
+
+index.html
+master.html
+master.js
+vercel.json
+api/
+  facebook-post.js
+  health.js
+
+VERCEL SETTINGS
+Framework Preset: Other
+Root Directory: ./
+Build Command: blank
+Output Directory: blank
+Install Command: blank
+
+After committing, redeploy Production.
+
+TEST 1:
+https://www.baptechnicalofficial.com/api/health
+Expected: JSON with "ok": true
+
+TEST 2:
+https://www.baptechnicalofficial.com/api/facebook-post
+Expected in browser GET: 405 / Method not allowed
+That means the route exists. The Master Admin sends POST requests to it.
+
+If /api/health still returns 404:
+1. Open GitHub and confirm api is directly beside index.html.
+2. In Vercel Settings > Build and Deployment, confirm Root Directory points to the folder containing BOTH index.html and api/.
+3. Remove any Output Directory setting.
+4. Redeploy Production.
+
+Environment Variables required in Vercel Production:
+SUPABASE_URL
+SUPABASE_ANON_KEY
+FACEBOOK_PAGE_ID
+FACEBOOK_PAGE_ACCESS_TOKEN
+
+Keep FACEBOOK_PAGE_ACCESS_TOKEN private. Never put it in GitHub.

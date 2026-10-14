@@ -1,39 +1,29 @@
-BAPOFFICIALS - API ROUTE FIX
+BAPTO - ALL ANNOUNCEMENTS TO FACEBOOK UPDATE
 
-The uploaded bapofficials-main.zip did not contain an api folder. Vercel therefore had no /api/facebook-post route to deploy.
+UPLOAD / REPLACE THESE IN YOUR GITHUB REPOSITORY:
+1. master.html
+2. master.js
 
-UPLOAD THESE ITEMS TO THE ROOT OF THE SAME GITHUB REPOSITORY THAT CONTAINS index.html:
+Keep your existing api/facebook-post.js and vercel.json from the Facebook API fix.
+The complete ZIP also contains them.
 
-1) api/health.js
-2) api/facebook-post.js
-3) vercel.json (replace the existing file)
+WHAT CHANGED
+- Every newly published announcement automatically posts to the connected official Facebook Page.
+- Draft announcements post automatically when they are later changed to Published.
+- Existing published announcements that were never sent to Facebook show as Facebook: pending.
+- Master Admin has a 'Post Pending Announcements to Facebook' button to send all pending announcements in the current list.
+- Each published announcement has a Post to FB button, or Post Again if it was already posted.
+- Facebook post ID and posted date are saved in Supabase to prevent accidental duplicate auto-posts.
 
-Your GitHub repository must look like:
+SUPABASE
+If you already ran EVENTS_FACEBOOK_UPDATE.sql, no additional SQL is normally required.
+If the columns are missing, run FACEBOOK_ALL_ANNOUNCEMENTS.sql in Supabase SQL Editor.
 
-index.html
-master.html
-master.js
-vercel.json
-api/
-  health.js
-  facebook-post.js
+VERCEL
+Keep these Environment Variables configured:
+FACEBOOK_PAGE_ID=61595557911974
+FACEBOOK_PAGE_ACCESS_TOKEN=(your private Page Access Token)
+SUPABASE_URL=(your project URL)
+SUPABASE_ANON_KEY=(your anon/publishable key)
 
-IMPORTANT VERCEL SETTINGS:
-- Framework Preset: Other
-- Root Directory: leave blank / repository root (or select the exact folder that contains index.html AND api/)
-- Build Command: blank
-- Output Directory: blank
-- Install Command: blank
-
-Then redeploy Production.
-
-TEST 1:
-https://www.baptechnicalofficial.com/api/health
-Expected: JSON with "ok": true.
-
-TEST 2:
-https://www.baptechnicalofficial.com/api/facebook-post
-Expected in a browser GET request: 405 Method not allowed.
-That proves the function exists.
-
-If /api/health is still 404, open the Vercel deployment and check Deployment Summary -> Functions. You should see /api/health and /api/facebook-post. If they are absent, the Vercel Root Directory is pointing to a different folder than the one containing api/.
+Never upload the Facebook Page Access Token to GitHub.
