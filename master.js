@@ -58,12 +58,24 @@
   async function postToFacebook(payload) {
     const { data: { session } } = await db.auth.getSession();
     if (!session?.access_token) throw new Error('Your admin session expired. Please sign in again.');
-    const res = await fetch('/api/facebook-post', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`}, body:JSON.stringify(payload) });
-    const data = await res.json().catch(()=>({}));
-    if (!res.ok) {
-      if (res.status === 404) throw new Error('Facebook API route is not deployed. Make sure api/facebook-post.js is in the ROOT of the GitHub/Vercel project, then redeploy.');
-      throw new Error(data.error || `Facebook publishing failed (${res.status}).`);
+
+    const { data, error } = await db.functions.invoke('facebook-post', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+      body: payload
+    });
+
+    if (error) {
+      let detail = '';
+      try {
+        if (error.context && typeof error.context.json === 'function') {
+          const body = await error.context.json();
+          detail = body?.error || body?.message || '';
+        }
+      } catch (_) {}
+      throw new Error(detail || error.message || 'Supabase Facebook function failed.');
     }
+    if (data?.error) throw new Error(data.error);
+    if (!data?.ok) throw new Error('Supabase Facebook function returned an invalid response.');
     return data;
   }
 

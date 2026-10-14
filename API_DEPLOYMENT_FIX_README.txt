@@ -1,3 +1,5 @@
+IMPORTANT: This package now uses Supabase Edge Functions for Facebook posting. Ignore the older Vercel /api instructions below and follow SUPABASE_FACEBOOK_REMEDY.md.
+
 BAPTO VERCEL API - CURRENT FORMAT FIX
 =====================================
 

@@ -11,11 +11,5 @@
     { "source": "/announcement", "destination": "/announcement.html" },
     { "source": "/chapter", "destination": "/chapter.html" },
     { "source": "/event", "destination": "/event.html" }
-  ],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
-    }
   ]
 }

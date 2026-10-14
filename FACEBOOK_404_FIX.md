@@ -1,3 +1,5 @@
+IMPORTANT: This package now uses Supabase Edge Functions for Facebook posting. Ignore the older Vercel /api instructions below and follow SUPABASE_FACEBOOK_REMEDY.md.
+
 # Fix: Facebook publishing failed (404)
 
 This specific 404 means the browser could not find the website's Vercel API route `/api/facebook-post`. It is NOT yet a Facebook token error.

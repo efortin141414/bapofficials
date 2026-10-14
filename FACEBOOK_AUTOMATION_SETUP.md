@@ -1,3 +1,5 @@
+IMPORTANT: This package now uses Supabase Edge Functions for Facebook posting. Ignore the older Vercel /api instructions below and follow SUPABASE_FACEBOOK_REMEDY.md.
+
 # BAPTO Facebook Auto-Posting Setup
 
 The website is already coded to publish a saved **published announcement** to a Facebook **Page** when the Master Admin leaves **Automatically post to Facebook Page** checked.

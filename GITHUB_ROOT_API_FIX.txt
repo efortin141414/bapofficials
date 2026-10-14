@@ -1,3 +1,5 @@
+IMPORTANT: This package now uses Supabase Edge Functions for Facebook posting. Ignore the older Vercel /api instructions below and follow SUPABASE_FACEBOOK_REMEDY.md.
+
 BAP Technical Officials - Vercel API Deployment Fix
 
 IMPORTANT: Upload the CONTENTS of this folder directly to the ROOT of your GitHub repository.
