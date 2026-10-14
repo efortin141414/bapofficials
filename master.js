@@ -58,25 +58,11 @@
   async function postToFacebook(payload) {
     const { data: { session } } = await db.auth.getSession();
     if (!session?.access_token) throw new Error('Your admin session expired. Please sign in again.');
-
-    const base = String(window.BAPTO_SUPABASE_URL || '').replace(/\/$/, '');
-    if (!base) throw new Error('Supabase URL is missing from supabase-config.js.');
-
-    const endpoint = `${base}/functions/v1/facebook-post`;
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey': window.BAPTO_SUPABASE_PUBLISHABLE_KEY || window.BAPTO_SUPABASE_ANON_KEY || ''
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await res.json().catch(() => ({}));
+    const res = await fetch('/api/facebook-post', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`}, body:JSON.stringify(payload) });
+    const data = await res.json().catch(()=>({}));
     if (!res.ok) {
-      if (res.status === 404) throw new Error('The Supabase Edge Function "facebook-post" is not deployed yet. Deploy it in Supabase Dashboard → Edge Functions.');
-      throw new Error(data.error || data.message || `Facebook publishing failed (${res.status}).`);
+      if (res.status === 404) throw new Error('Facebook API route is not deployed. Make sure api/facebook-post.js is in the ROOT of the GitHub/Vercel project, then redeploy.');
+      throw new Error(data.error || `Facebook publishing failed (${res.status}).`);
     }
     return data;
   }
